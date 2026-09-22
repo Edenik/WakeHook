@@ -1,7 +1,11 @@
 package ai.wakehook.app.ui.edit
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -10,6 +14,17 @@ import androidx.compose.ui.unit.dp
 import ai.wakehook.app.domain.Alarm
 import ai.wakehook.app.domain.hasDay
 import java.time.DayOfWeek
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+
+private enum class EditMode { ONCE, WEEKLY, DATES }
+
+private fun modeOf(a: Alarm): EditMode = when {
+    a.isDateBased -> EditMode.DATES
+    a.isRecurring -> EditMode.WEEKLY
+    else -> EditMode.ONCE
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -17,6 +32,8 @@ fun AlarmEditScreen(vm: AlarmEditViewModel, alarmId: String?, onDone: () -> Unit
     var alarm by remember { mutableStateOf<Alarm?>(null) }
     LaunchedEffect(alarmId) { alarm = vm.load(alarmId) }
     val a = alarm ?: return
+    val mode = modeOf(a)
+    var showDatePicker by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -45,16 +62,82 @@ fun AlarmEditScreen(vm: AlarmEditViewModel, alarmId: String?, onDone: () -> Unit
                 value = a.label, onValueChange = { alarm = a.copy(label = it) },
                 label = { Text("Label") }, modifier = Modifier.fillMaxWidth()
             )
-            Text("Repeat")
+
+            Text("Mode")
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                DayOfWeek.values().forEach { day ->
-                    FilterChip(
-                        selected = a.repeatDays.hasDay(day),
-                        onClick = { alarm = vm.toggleDay(a, day) },
-                        label = { Text(day.name.take(2)) }
-                    )
+                FilterChip(
+                    selected = mode == EditMode.ONCE,
+                    onClick = { alarm = a.copy(repeatDays = 0, dates = emptyList()) },
+                    label = { Text("Once") }
+                )
+                FilterChip(
+                    selected = mode == EditMode.WEEKLY,
+                    onClick = { alarm = a.copy(dates = emptyList()) },
+                    label = { Text("Weekly") }
+                )
+                FilterChip(
+                    selected = mode == EditMode.DATES,
+                    onClick = { alarm = a.copy(repeatDays = 0) },
+                    label = { Text("Dates") }
+                )
+            }
+
+            if (mode == EditMode.WEEKLY) {
+                Text("Repeat")
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DayOfWeek.values().forEach { day ->
+                        FilterChip(
+                            selected = a.repeatDays.hasDay(day),
+                            onClick = { alarm = vm.toggleDay(a, day) },
+                            label = { Text(day.name.take(2)) }
+                        )
+                    }
                 }
             }
+
+            if (mode == EditMode.DATES) {
+                Text("Dates")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(a.dates, key = { it.toString() }) { d ->
+                        InputChip(
+                            selected = false,
+                            onClick = { alarm = a.copy(dates = a.dates - d) },
+                            label = { Text(d.toString()) },
+                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Remove $d") }
+                        )
+                    }
+                }
+                OutlinedButton(onClick = { showDatePicker = true }) { Text("Add date") }
+            }
         }
+    }
+
+    if (showDatePicker) {
+        val today = LocalDate.now()
+        val pickerState = rememberDatePickerState(
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+                    return date.isAfter(today)
+                }
+            }
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val millis = pickerState.selectedDateMillis
+                    if (millis != null) {
+                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        alarm = a.copy(
+                            repeatDays = 0,
+                            dates = (a.dates + picked).distinct().sorted()
+                        )
+                    }
+                    showDatePicker = false
+                }) { Text("Add") }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
+        ) { DatePicker(state = pickerState) }
     }
 }
