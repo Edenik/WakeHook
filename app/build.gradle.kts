@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -24,8 +26,25 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests { isIncludeAndroidResources = true } }
+
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val hasKeystore = keystorePropsFile.exists()
+    val keystoreProps = Properties().apply {
+        if (hasKeystore) load(keystorePropsFile.inputStream())
+    }
+    signingConfigs {
+        if (hasKeystore) create("release") {
+            storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
+        }
     }
 }
 
