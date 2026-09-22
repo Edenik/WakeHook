@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,10 +17,24 @@ import ai.wakehook.app.domain.Alarm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlarmListScreen(vm: AlarmListViewModel, onAdd: () -> Unit, onEdit: (String) -> Unit) {
+fun AlarmListScreen(
+    vm: AlarmListViewModel,
+    onAdd: () -> Unit,
+    onEdit: (String) -> Unit,
+    onSettings: () -> Unit = {},
+) {
     val alarms by vm.alarms.collectAsStateWithLifecycle()
     Scaffold(
-        topBar = { TopAppBar(title = { Text("WakeHook") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("WakeHook") },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add alarm") }
         }
