@@ -32,7 +32,10 @@ fun AlarmEditScreen(vm: AlarmEditViewModel, alarmId: String?, onDone: () -> Unit
     var alarm by remember { mutableStateOf<Alarm?>(null) }
     LaunchedEffect(alarmId) { alarm = vm.load(alarmId) }
     val a = alarm ?: return
-    val mode = modeOf(a)
+    // Mode is explicit UI state (seeded from the loaded alarm), NOT derived from
+    // data — otherwise you could never leave "Once": Weekly needs a day and Dates
+    // needs a date, but those controls only show once you're already in that mode.
+    var mode by remember(a.id) { mutableStateOf(modeOf(a)) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     Scaffold(topBar = {
@@ -67,17 +70,17 @@ fun AlarmEditScreen(vm: AlarmEditViewModel, alarmId: String?, onDone: () -> Unit
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilterChip(
                     selected = mode == EditMode.ONCE,
-                    onClick = { alarm = a.copy(repeatDays = 0, dates = emptyList()) },
+                    onClick = { mode = EditMode.ONCE; alarm = a.copy(repeatDays = 0, dates = emptyList()) },
                     label = { Text("Once") }
                 )
                 FilterChip(
                     selected = mode == EditMode.WEEKLY,
-                    onClick = { alarm = a.copy(dates = emptyList()) },
+                    onClick = { mode = EditMode.WEEKLY; alarm = a.copy(dates = emptyList()) },
                     label = { Text("Weekly") }
                 )
                 FilterChip(
                     selected = mode == EditMode.DATES,
-                    onClick = { alarm = a.copy(repeatDays = 0) },
+                    onClick = { mode = EditMode.DATES; alarm = a.copy(repeatDays = 0) },
                     label = { Text("Dates") }
                 )
             }
