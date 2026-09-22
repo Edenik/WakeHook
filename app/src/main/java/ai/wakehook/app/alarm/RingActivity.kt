@@ -1,0 +1,113 @@
+package ai.wakehook.app.alarm
+
+import android.app.KeyguardManager
+import android.app.NotificationManager
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.os.Build
+import android.os.Bundle
+import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import ai.wakehook.app.ui.theme.WakeHookTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class RingActivity : ComponentActivity() {
+    private var player: MediaPlayer? = null
+    private var vibrator: Vibrator? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)
+            ?.requestDismissKeyguard(this, null)
+
+        val id = intent.getStringExtra(AlarmIntents.EXTRA_ID) ?: ""
+        val label = intent.getStringExtra(AlarmIntents.EXTRA_LABEL) ?: ""
+
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wakehook:ring").also {
+            it.acquire(10 * 60 * 1000L)
+        }
+        startRinging()
+
+        setContent {
+            WakeHookTheme {
+                RingScreen(
+                    time = SimpleDateFormat("HH:mm", Locale.US).format(Date()),
+                    label = label,
+                    onDismiss = { stopAll(id); finish() },
+                    onSnooze = {
+                        AlarmScheduler(this).scheduleSnooze(id, label,
+                            System.currentTimeMillis() + 10 * 60 * 1000L)
+                        stopAll(id); finish()
+                    },
+                )
+            }
+        }
+    }
+
+    private fun startRinging() {
+        try {
+            player = MediaPlayer().apply {
+                setDataSource(this@RingActivity,
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+                setAudioAttributes(AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM).build())
+                isLooping = true
+                prepare()
+                start()
+            }
+        } catch (_: Exception) {}
+        vibrator = (getSystemService(VIBRATOR_SERVICE) as? Vibrator)?.also {
+            if (Build.VERSION.SDK_INT >= 26)
+                it.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 600, 400), 0))
+            else @Suppress("DEPRECATION") it.vibrate(longArrayOf(0, 600, 400), 0)
+        }
+    }
+
+    private fun stopAll(id: String) {
+        try { player?.stop(); player?.release() } catch (_: Exception) {}
+        player = null
+        vibrator?.cancel()
+        if (wakeLock?.isHeld == true) wakeLock?.release()
+        if (id.isNotEmpty())
+            (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)
+                ?.cancel(AlarmIntents.requestCode(id))
+    }
+
+    override fun onDestroy() { stopAll(intent.getStringExtra(AlarmIntents.EXTRA_ID) ?: ""); super.onDestroy() }
+    @Deprecated("force explicit choice") override fun onBackPressed() { /* ignore */ }
+}
+
+@Composable
+private fun RingScreen(time: String, label: String, onDismiss: () -> Unit, onSnooze: () -> Unit) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(time, style = MaterialTheme.typography.displayLarge)
+            if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.headlineSmall)
+            Spacer(Modifier.height(48.dp))
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Dismiss") }
+            Spacer(Modifier.height(16.dp))
+            OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth()) { Text("Snooze 10 min") }
+        }
+    }
+}
