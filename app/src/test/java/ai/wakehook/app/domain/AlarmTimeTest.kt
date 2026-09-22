@@ -12,7 +12,7 @@ class AlarmTimeTest {
     private val now = ZonedDateTime.of(2026, 9, 23, 8, 0, 0, 0, zone)
 
     private fun alarm(hour: Int, minute: Int, repeatDays: Int = 0, enabled: Boolean = true) =
-        Alarm("id", "", hour, minute, repeatDays, enabled)
+        Alarm("id", "", hour, minute, repeatDays, enabled = enabled)
 
     private fun expected(y: Int, mo: Int, d: Int, h: Int, mi: Int) =
         ZonedDateTime.of(y, mo, d, h, mi, 0, 0, zone).toInstant().toEpochMilli()
@@ -63,5 +63,28 @@ class AlarmTimeTest {
         // 02:30 does not exist; java.time shifts it forward. Assert it is after 'before'.
         assertThat(result).isNotNull()
         assertThat(result!!).isGreaterThan(before.toInstant().toEpochMilli())
+    }
+
+    @Test fun dates_singleFutureDate_fires() {
+        val a = Alarm("id", "", 6, 45, 0, dates = listOf(java.time.LocalDate.of(2026, 12, 25)))
+        assertThat(AlarmTime.nextTrigger(a, now))
+            .isEqualTo(expected(2026, 12, 25, 6, 45))
+    }
+
+    @Test fun dates_severalDates_picksEarliestFuture() {
+        val a = Alarm("id", "", 6, 45, 0, dates = listOf(
+            java.time.LocalDate.of(2027, 1, 1), java.time.LocalDate.of(2026, 12, 25)))
+        assertThat(AlarmTime.nextTrigger(a, now)).isEqualTo(expected(2026, 12, 25, 6, 45))
+    }
+
+    @Test fun dates_allPast_returnsNull() {
+        val a = Alarm("id", "", 6, 45, 0, dates = listOf(java.time.LocalDate.of(2020, 1, 1)))
+        assertThat(AlarmTime.nextTrigger(a, now)).isNull()
+    }
+
+    @Test fun dates_takePrecedenceOverRepeatDays() {
+        val a = Alarm("id", "", 6, 45, repeatDays = 0b1111111,
+            dates = listOf(java.time.LocalDate.of(2026, 12, 25)))
+        assertThat(AlarmTime.nextTrigger(a, now)).isEqualTo(expected(2026, 12, 25, 6, 45))
     }
 }

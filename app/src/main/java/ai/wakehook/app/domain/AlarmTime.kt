@@ -12,6 +12,17 @@ object AlarmTime {
     /** Next fire time in epoch millis, or null if none (disabled). */
     fun nextTrigger(alarm: Alarm, now: ZonedDateTime): Long? {
         if (!alarm.enabled) return null
+
+        if (alarm.isDateBased) {
+            return alarm.dates
+                .map { d ->
+                    now.withYear(d.year).withDayOfYear(d.dayOfYear)
+                        .withHour(alarm.hour).withMinute(alarm.minute).withSecond(0).withNano(0)
+                }
+                .filter { it.isAfter(now) }
+                .minOrNull()?.toInstant()?.toEpochMilli()
+        }
+
         var candidate = now
             .withHour(alarm.hour).withMinute(alarm.minute)
             .withSecond(0).withNano(0)

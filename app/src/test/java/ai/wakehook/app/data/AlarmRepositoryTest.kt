@@ -11,6 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
 class AlarmRepositoryTest {
@@ -48,5 +49,11 @@ class AlarmRepositoryTest {
     @Test fun observeAlarms_emitsCurrentList() = runTest {
         repo.upsert(Alarm(id = "a1"))
         assertThat(repo.observeAlarms().first().map { it.id }).containsExactly("a1")
+    }
+
+    @Test fun upsert_then_get_roundTrips_dates() = runTest {
+        val a = Alarm(id = "a1", dates = listOf(LocalDate.of(2026, 12, 25)))
+        repo.upsert(a)
+        assertThat(repo.get("a1")).isEqualTo(a)
     }
 }

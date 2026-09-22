@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import java.util.WeakHashMap
 import java.util.concurrent.Executors
 
-@Database(entities = [AlarmEntity::class], version = 1, exportSchema = false)
+@Database(entities = [AlarmEntity::class], version = 2, exportSchema = false)
 abstract class AlarmDatabase : RoomDatabase() {
     abstract fun alarmDao(): AlarmDao
 
@@ -30,6 +30,7 @@ abstract class AlarmDatabase : RoomDatabase() {
                     Room.databaseBuilder(appContext, AlarmDatabase::class.java, "wakehook.db")
                         .setQueryExecutor(Executors.newSingleThreadExecutor())
                         .setTransactionExecutor(Executors.newSingleThreadExecutor())
+                        .fallbackToDestructiveMigration()
                         .build()
                 }
             }
