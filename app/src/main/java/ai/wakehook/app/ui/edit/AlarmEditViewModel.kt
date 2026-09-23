@@ -7,6 +7,7 @@ import ai.wakehook.app.data.AlarmRepository
 import ai.wakehook.app.domain.Alarm
 import ai.wakehook.app.domain.dayBit
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import java.time.DayOfWeek
 
 class AlarmEditViewModel(
@@ -20,12 +21,16 @@ class AlarmEditViewModel(
     fun toggleDay(alarm: Alarm, day: DayOfWeek): Alarm =
         alarm.copy(repeatDays = alarm.repeatDays xor dayBit(day))
 
-    fun save(alarm: Alarm) = viewModelScope.launch {
+    fun save(alarm: Alarm, onFailure: (Exception) -> Unit = {}): Job = viewModelScope.launch {
         // Bump version so this local edit outranks a stale remote copy in the next merge.
         val bumped = alarm.copy(version = alarm.version + 1)
         repo.upsert(bumped)
-        scheduler.cancel(bumped.id)
-        if (bumped.enabled) scheduler.schedule(bumped)
-        onMutated()
+        try {
+            scheduler.cancel(bumped.id)
+            if (bumped.enabled) scheduler.schedule(bumped)
+            onMutated()
+        } catch (e: Exception) {
+            onFailure(e)
+        }
     }
 }

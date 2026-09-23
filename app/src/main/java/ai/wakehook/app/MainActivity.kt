@@ -203,7 +203,9 @@ class MainActivity : ComponentActivity() {
                 SyncTrigger.now(container.appContext)
             } }
         })
-        AlarmEditScreen(vm, id) { nav.popBackStack() }
+        AlarmEditScreen(vm, id, onDone = { nav.popBackStack() }, onFixExactAlarm = {
+            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+        })
     }
 
     override fun onResume() {

@@ -1,142 +1,184 @@
-package ai.wakehook.app.ui.edit
+﻿package ai.wakehook.app.ui.edit
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.wakehook.app.R
 import ai.wakehook.app.domain.Alarm
-import ai.wakehook.app.domain.hasDay
-import ai.wakehook.app.ui.theme.*
-import java.time.DayOfWeek
-import java.time.Instant
+import ai.wakehook.app.ui.theme.ScreenHeader
+import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneOffset
-import java.time.format.TextStyle as DayTextStyle
-import java.util.Locale
 
-private enum class EditMode { ONCE, WEEKLY, DATES }
-private fun modeOf(a: Alarm) = when { a.isDateBased -> EditMode.DATES; a.isRecurring -> EditMode.WEEKLY; else -> EditMode.ONCE }
+private val alarmDraftSaver = Saver<Alarm?, List<Any>>(
+    save = { alarm -> alarm?.let { arrayListOf(
+        it.id, it.label, it.hour, it.minute, it.repeatDays, ArrayList(it.dates.map(LocalDate::toEpochDay)),
+        it.enabled, it.source, it.version, it.ackState, it.ackAt, it.ackError, it.snoozedUntil ?: -1L,
+    ) } ?: arrayListOf() },
+    restore = { saved -> if (saved.isEmpty()) null else Alarm(
+        id = saved[0] as String,
+        label = saved[1] as String,
+        hour = saved[2] as Int,
+        minute = saved[3] as Int,
+        repeatDays = saved[4] as Int,
+        dates = (saved[5] as List<*>).map { day -> LocalDate.ofEpochDay(day as Long) },
+        enabled = saved[6] as Boolean,
+        source = saved[7] as String,
+        version = saved[8] as Long,
+        ackState = saved[9] as String,
+        ackAt = saved[10] as String,
+        ackError = saved[11] as String,
+        snoozedUntil = (saved[12] as Long).takeIf { timestamp -> timestamp >= 0 },
+    ) },
+)
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+private val playbackSettingsSaver = Saver<AlarmPlaybackSettings, List<Any>>(
+    save = { listOf(it.soundEnabled, it.soundUri ?: AlarmPlaybackSettings.SILENT_SOUND,
+        it.vibrationEnabled, it.vibrationPattern, it.snoozeEnabled, it.snoozeMinutes, it.snoozeLimit) },
+    restore = { saved -> AlarmPlaybackSettings(
+        soundEnabled = saved[0] as Boolean,
+        soundUri = saved[1] as String,
+        vibrationEnabled = saved[2] as Boolean,
+        vibrationPattern = saved[3] as String,
+        snoozeEnabled = saved[4] as Boolean,
+        snoozeMinutes = saved[5] as Int,
+        snoozeLimit = saved[6] as Int,
+    ) },
+)
+
+/** Coordinates loading, transient editor state, persistence, and navigation for one alarm. */
 @Composable
-fun AlarmEditScreen(vm: AlarmEditViewModel, alarmId: String?, onDone: () -> Unit) {
-    var alarm by remember { mutableStateOf<Alarm?>(null) }
-    LaunchedEffect(alarmId) { alarm = vm.load(alarmId) }
-    val a = alarm ?: return
-    var mode by remember(a.id) { mutableStateOf(modeOf(a)) }
-    var hour by rememberSaveable(a.id) { mutableStateOf(a.hour.toString().padStart(2, '0')) }
-    var minute by rememberSaveable(a.id) { mutableStateOf(a.minute.toString().padStart(2, '0')) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+fun AlarmEditScreen(
+    vm: AlarmEditViewModel,
+    alarmId: String?,
+    onDone: () -> Unit,
+    onFixExactAlarm: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val store = remember(context) { AlarmPlaybackSettingsStore(context) }
+    var alarm by rememberSaveable(alarmId, stateSaver = alarmDraftSaver) { mutableStateOf<Alarm?>(null) }
+    LaunchedEffect(alarmId) { if (alarm == null) alarm = vm.load(alarmId) }
+    val currentAlarm = alarm ?: return
+    val isNew = alarmId == null
+    var mode by rememberSaveable(currentAlarm.id) { mutableStateOf(alarmScheduleMode(currentAlarm)) }
+    var playback by rememberSaveable(currentAlarm.id, stateSaver = playbackSettingsSaver) {
+        mutableStateOf(store.load(currentAlarm.id, isNew))
+    }
     var saving by remember { mutableStateOf(false) }
-    val validTime = hour.toIntOrNull() in 0..23 && minute.toIntOrNull() in 0..59
-    val validSchedule = when (mode) { EditMode.ONCE -> true; EditMode.WEEKLY -> a.repeatDays != 0; EditMode.DATES -> a.dates.isNotEmpty() }
-    Scaffold(topBar = { ScreenHeader(stringResource(if (alarmId == null) R.string.new_alarm else R.string.edit_alarm), onDone) }) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    var showSaveError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val failureMessage = stringResource(R.string.save_schedule_failed)
+
+    val ringtonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            playback = playback.copy(
+                soundUri = uri?.toString() ?: AlarmPlaybackSettings.SILENT_SOUND,
+                soundEnabled = uri != null,
+            )
+        }
+    }
+    val chooseRingtone = {
+        val selected = playback.soundUri
+            ?.takeIf { it != AlarmPlaybackSettings.SILENT_SOUND && it != AlarmPlaybackSettings.SYSTEM_DEFAULT_SOUND }
+            ?.let(Uri::parse) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.sound_picker_title))
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, selected)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+        }
+        ringtonePicker.launch(intent)
+    }
+
+    Scaffold(topBar = {
+        ScreenHeader(stringResource(if (isNew) R.string.new_alarm else R.string.edit_alarm), onDone)
+    }, bottomBar = {
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = onDone, enabled = !saving, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.cancel))
+            }
+            Button(
+                onClick = {
+                    val candidate = alarm ?: return@Button
+                    if (!isValidSchedule(candidate, mode)) return@Button
+                    saving = true
+                    showSaveError = false
+                    scope.launch {
+                        var failed = false
+                        try {
+                            store.save(candidate.id, playback)
+                            vm.save(candidate, onFailure = { failed = true }).join()
+                        } catch (_: Exception) {
+                            failed = true
+                        } finally {
+                            saving = false
+                        }
+                        if (failed) showSaveError = true else onDone()
+                    }
+                },
+                enabled = !saving && isValidSchedule(currentAlarm, mode),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+            ) { Text(stringResource(if (saving) R.string.saving else R.string.save)) }
+        }
+    }) { insets ->
+        Column(
+            Modifier.padding(insets).fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp).padding(top = 2.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Row(Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = hour, onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) hour = it },
-                        label = { Text(stringResource(R.string.hour)) }, singleLine = true,
-                        isError = hour.toIntOrNull() !in 0..23,
-                        textStyle = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-                    Text(":", fontSize = 36.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedTextField(value = minute, onValueChange = { if (it.length <= 2 && it.all(Char::isDigit)) minute = it },
-                        label = { Text(stringResource(R.string.minute)) }, singleLine = true,
-                        isError = minute.toIntOrNull() !in 0..59,
-                        textStyle = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.primary),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                Row(Modifier.fillMaxWidth().height(202.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center) {
+                    AlarmTimeWheel(24, currentAlarm.hour, stringResource(R.string.time_wheel_hour_desc),
+                        onValueChange = { hour -> alarm = alarm?.copy(hour = hour) }, Modifier.weight(1f))
+                    Text(":", fontSize = 38.sp, fontWeight = FontWeight.Light,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    AlarmTimeWheel(60, currentAlarm.minute, stringResource(R.string.time_wheel_minute_desc),
+                        onValueChange = { minute -> alarm = alarm?.copy(minute = minute) }, Modifier.weight(1f))
                 }
             }
-            Text(stringResource(R.string.time_format_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(value = a.label, onValueChange = { alarm = a.copy(label = it) },
-                label = { Text(stringResource(R.string.label)) }, modifier = Modifier.fillMaxWidth())
-            SectionLabel(stringResource(R.string.mode))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(EditMode.ONCE to R.string.mode_once, EditMode.WEEKLY to R.string.mode_weekly, EditMode.DATES to R.string.mode_dates).forEach { (m, label) ->
-                    FilterChip(selected = mode == m, onClick = {
-                        mode = m
-                        alarm = when (m) { EditMode.ONCE -> a.copy(repeatDays = 0, dates = emptyList()); EditMode.WEEKLY -> a.copy(dates = emptyList()); EditMode.DATES -> a.copy(repeatDays = 0) }
-                    }, label = { Text(stringResource(label)) }, modifier = Modifier.heightIn(min = 48.dp))
-                }
-            }
-            if (mode == EditMode.WEEKLY) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    DayOfWeek.values().forEach { day ->
-                        FilterChip(selected = a.repeatDays.hasDay(day), onClick = { alarm = vm.toggleDay(a, day) },
-                            label = { Text(day.getDisplayName(DayTextStyle.SHORT, Locale.getDefault())) }, modifier = Modifier.heightIn(min = 48.dp))
-                    }
-                }
-            }
-            if (mode == EditMode.DATES) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    a.dates.forEach { d ->
-                        InputChip(selected = false, onClick = { alarm = a.copy(dates = a.dates - d) },
-                            label = { Text(d.toString()) }, trailingIcon = { Icon(Icons.Default.Close, stringResource(R.string.remove_date, d.toString())) },
-                            modifier = Modifier.heightIn(min = 48.dp))
-                    }
-                }
-                OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = { showDatePicker = true }) { Text(stringResource(R.string.add_date)) }
-            }
-            if (!validSchedule) Text(stringResource(R.string.choose_schedule), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            Button(shape = RoundedCornerShape(14.dp), onClick = {
-                saving = true
-                scope.launch {
-                    vm.save(a.copy(hour = hour.toInt(), minute = minute.toInt())).join()
-                    onDone()
-                }
-            }, enabled = validTime && validSchedule && !saving,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text(stringResource(R.string.save)) }
-            Text(stringResource(R.string.save_alarm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            AlarmEditorOptionsCard(
+                alarm = currentAlarm,
+                scheduleMode = mode,
+                onAlarmChange = { alarm = it },
+                onScheduleModeChange = { mode = it },
+                playbackSettings = playback,
+                onPlaybackSettingsChange = { playback = it },
+                onChooseDeviceRingtone = chooseRingtone,
+                onLabelChange = { alarm = alarm?.copy(label = it) },
+            )
         }
     }
 
-    if (showDatePicker) {
-        val today = LocalDate.now()
-        val pickerState = rememberDatePickerState(
-            selectableDates = object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                    val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
-                    return date.isAfter(today)
-                }
-            }
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(shape = RoundedCornerShape(14.dp), onClick = {
-                    val millis = pickerState.selectedDateMillis
-                    if (millis != null) {
-                        val picked = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
-                        alarm = a.copy(
-                            repeatDays = 0,
-                            dates = (a.dates + picked).distinct().sorted()
-                        )
-                    }
-                    showDatePicker = false
-                }) { Text(stringResource(R.string.add_date)) }
-            },
-            dismissButton = { TextButton(shape = RoundedCornerShape(14.dp), onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel)) } }
-        ) { DatePicker(state = pickerState) }
-    }
+    if (showSaveError) AlertDialog(
+        onDismissRequest = { showSaveError = false },
+        title = { Text(stringResource(R.string.save_failed_title)) },
+        text = { Text(failureMessage) },
+        confirmButton = { TextButton(onClick = { showSaveError = false; onFixExactAlarm() }) {
+            Text(stringResource(R.string.fix_permission))
+        } },
+        dismissButton = { TextButton(onClick = { showSaveError = false }) { Text(stringResource(R.string.cancel)) } },
+    )
 }
