@@ -179,9 +179,9 @@ private fun RingScreen(time: String, label: String, onDismiss: () -> Unit, onSno
             Text(time, style = MaterialTheme.typography.displayLarge)
             if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(48.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Dismiss") }
+            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(androidx.compose.ui.res.stringResource(ai.wakehook.app.R.string.dismiss)) }
             Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth()) { Text("Snooze 10 min") }
+            OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth()) { Text(androidx.compose.ui.res.stringResource(ai.wakehook.app.R.string.snooze_10)) }
         }
     }
 }

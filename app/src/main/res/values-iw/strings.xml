@@ -1,0 +1,73 @@
+<resources>
+    <string name="app_name">WakeHook</string>
+
+    <!-- list -->
+    <string name="settings">הגדרות</string>
+    <string name="add_alarm">הוספת התראה</string>
+    <string name="empty_alarms">אין התראות עדיין.\nהקישו + כדי להוסיף — או חברו את Google Drive בהגדרות כדי שסוכן יוכל להגדיר אותן.</string>
+
+    <!-- edit -->
+    <string name="new_alarm">התראה חדשה</string>
+    <string name="edit_alarm">עריכת התראה</string>
+    <string name="save">שמירה</string>
+    <string name="hour">שעה</string>
+    <string name="minute">דקה</string>
+    <string name="label">תווית</string>
+    <string name="mode">מצב</string>
+    <string name="mode_once">פעם אחת</string>
+    <string name="mode_weekly">שבועי</string>
+    <string name="mode_dates">תאריכים</string>
+    <string name="repeat">חזרה</string>
+    <string name="dates">תאריכים</string>
+    <string name="add_date">הוספת תאריך</string>
+    <string name="remove_date">הסרת %1$s</string>
+
+    <!-- ring -->
+    <string name="dismiss">כיבוי</string>
+    <string name="snooze_10">נודניק 10 דק׳</string>
+
+    <!-- settings -->
+    <string name="google_drive">Google Drive</string>
+    <string name="connected_last_sync">מחובר · סנכרון אחרון %1$s</string>
+    <string name="not_connected">לא מחובר</string>
+    <string name="connect">התחברות</string>
+    <string name="sync_now">סנכרון עכשיו</string>
+    <string name="sync">סנכרון</string>
+    <string name="copy_agent_prompt">העתקת הנחיה לסוכן</string>
+    <string name="copy_agent_prompt_desc">הדביקו את זה בסוכן ה-AI שלכם כדי שיוכל לנהל התראות דרך Drive</string>
+    <string name="copy">העתקה</string>
+    <string name="copied_agent_prompt">ההנחיה הועתקה</string>
+    <string name="perm_exact_alarms">התראות מדויקות</string>
+    <string name="perm_notifications">הודעות</string>
+    <string name="perm_full_screen">התראות במסך מלא</string>
+    <string name="perm_battery">התעלמות מאופטימיזציית סוללה</string>
+    <string name="granted">אושר</string>
+    <string name="required">נדרש</string>
+    <string name="fix">תיקון</string>
+
+    <!-- onboarding -->
+    <string name="onb_welcome_title">התראות שהסוכן החכם שלך יכול להגדיר.</string>
+    <string name="onb_welcome_body">שעון מעורר אמיתי שגם מקבל פקודות מהעוזר שלך — דרך קובץ ב-Google Drive שלך. בלי חשבון WakeHook, בלי שרת.</string>
+    <string name="onb_get_started">בואו נתחיל</string>
+    <string name="onb_continue">המשך</string>
+    <string name="onb_finish">סיום</string>
+    <string name="onb_perms_title">הרשאות לצלצול אמין</string>
+    <string name="onb_perms_body">אנדרואיד צריך אותן כדי שההתראה תצלצל גם במצב שקט, בשינה, או אחרי הפעלה מחדש.</string>
+    <string name="onb_grant">אישור</string>
+    <string name="onb_connect_title">חברו את Google Drive שלכם</string>
+    <string name="onb_scope_title">למה ל-WakeHook יש גישה</string>
+    <string name="onb_scope_body">רק לקובץ היחיד שהיא יוצרת (הרשאה: drive.file). היא לא יכולה לראות, לקרוא או לפתוח שום דבר אחר ב-Drive שלכם. בלי שרת WakeHook — ההתראות נשארות בחשבון שלכם.</string>
+    <string name="onb_sign_in">התחברות עם Google</string>
+    <string name="onb_skip">דילוג לעכשיו — שימוש מקומי</string>
+    <string name="onb_connected">✓ מחובר</string>
+    <string name="onb_revoke">ביטול גישה</string>
+    <string name="onb_done_title">הכול מוכן</string>
+    <string name="onb_done_connected">נוצרו WakeHook/wakehook.json ו-wakehook.md ב-Drive שלכם, עם התראות לדוגמה (כבויות). העתיקו את ההנחיה לסוכן כדי שהעוזר שלכם יוכל להגדיר התראות.</string>
+    <string name="onb_done_local">אפשר להוסיף התראות עכשיו. חברו את Google Drive מאוחר יותר בהגדרות כדי לאפשר לסוכן להגדיר אותן.</string>
+
+    <!-- notifications -->
+    <string name="channel_alarms">התראות</string>
+    <string name="channel_agent_activity">פעילות סוכן</string>
+    <string name="agent_set_alarm">%1$s הגדיר התראה</string>
+    <string name="agent_changed_alarm">%1$s שינה התראה</string>
+</resources>

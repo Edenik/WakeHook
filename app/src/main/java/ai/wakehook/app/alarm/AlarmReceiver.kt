@@ -56,7 +56,7 @@ class AlarmReceiver : BroadcastReceiver() {
     private fun showRing(context: Context, id: String, label: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
-            val ch = NotificationChannel(CHANNEL, "Alarms", NotificationManager.IMPORTANCE_HIGH)
+            val ch = NotificationChannel(CHANNEL, context.getString(ai.wakehook.app.R.string.channel_alarms), NotificationManager.IMPORTANCE_HIGH)
             ch.setBypassDnd(true)
             nm.createNotificationChannel(ch)
         }

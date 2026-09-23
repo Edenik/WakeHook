@@ -1,3 +1,73 @@
 <resources>
     <string name="app_name">WakeHook</string>
+
+    <!-- list -->
+    <string name="settings">Settings</string>
+    <string name="add_alarm">Add alarm</string>
+    <string name="empty_alarms">No alarms yet.\nTap + to add one — or connect Google Drive in Settings so an agent can set them.</string>
+
+    <!-- edit -->
+    <string name="new_alarm">New alarm</string>
+    <string name="edit_alarm">Edit alarm</string>
+    <string name="save">Save</string>
+    <string name="hour">Hour</string>
+    <string name="minute">Minute</string>
+    <string name="label">Label</string>
+    <string name="mode">Mode</string>
+    <string name="mode_once">Once</string>
+    <string name="mode_weekly">Weekly</string>
+    <string name="mode_dates">Dates</string>
+    <string name="repeat">Repeat</string>
+    <string name="dates">Dates</string>
+    <string name="add_date">Add date</string>
+    <string name="remove_date">Remove %1$s</string>
+
+    <!-- ring -->
+    <string name="dismiss">Dismiss</string>
+    <string name="snooze_10">Snooze 10 min</string>
+
+    <!-- settings -->
+    <string name="google_drive">Google Drive</string>
+    <string name="connected_last_sync">Connected · last sync %1$s</string>
+    <string name="not_connected">Not connected</string>
+    <string name="connect">Connect</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync">Sync</string>
+    <string name="copy_agent_prompt">Copy agent prompt</string>
+    <string name="copy_agent_prompt_desc">Paste this into your AI agent so it can manage alarms via Drive</string>
+    <string name="copy">Copy</string>
+    <string name="copied_agent_prompt">Copied agent prompt</string>
+    <string name="perm_exact_alarms">Exact alarms</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_full_screen">Full-screen alarms</string>
+    <string name="perm_battery">Ignore battery optimization</string>
+    <string name="granted">Granted</string>
+    <string name="required">Required</string>
+    <string name="fix">Fix</string>
+
+    <!-- onboarding -->
+    <string name="onb_welcome_title">Alarms your AI agent can set.</string>
+    <string name="onb_welcome_body">A real alarm clock that also takes orders from your assistant — through a file in your own Google Drive. No WakeHook account, no server.</string>
+    <string name="onb_get_started">Get started</string>
+    <string name="onb_continue">Continue</string>
+    <string name="onb_finish">Finish</string>
+    <string name="onb_perms_title">Permissions to ring reliably</string>
+    <string name="onb_perms_body">Android needs these so an alarm fires even on silent, asleep, or after a reboot.</string>
+    <string name="onb_grant">Grant</string>
+    <string name="onb_connect_title">Connect your Google Drive</string>
+    <string name="onb_scope_title">What WakeHook can access</string>
+    <string name="onb_scope_body">Only the one file it creates (scope: drive.file). It cannot see, read, or open anything else in your Drive. No WakeHook server — your alarms stay in your account.</string>
+    <string name="onb_sign_in">Sign in with Google</string>
+    <string name="onb_skip">Skip for now — use locally</string>
+    <string name="onb_connected">✓ Connected</string>
+    <string name="onb_revoke">Revoke access</string>
+    <string name="onb_done_title">You\'re set</string>
+    <string name="onb_done_connected">Created WakeHook/wakehook.json + wakehook.md in your Drive, with example alarms (off). Copy the agent prompt so your assistant can set alarms.</string>
+    <string name="onb_done_local">You can add alarms now. Connect Google Drive later in Settings to let an agent set them.</string>
+
+    <!-- notifications -->
+    <string name="channel_alarms">Alarms</string>
+    <string name="channel_agent_activity">Agent activity</string>
+    <string name="agent_set_alarm">%1$s set an alarm</string>
+    <string name="agent_changed_alarm">%1$s changed an alarm</string>
 </resources>
