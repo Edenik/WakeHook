@@ -41,4 +41,20 @@ class AlarmReceiverTest {
 
         assertThat(pending("r1")).isNotNull()
     }
+
+    @Test fun oneTimeAlarm_isDisabledAfterFiring() = runBlocking {
+        val db = AlarmDatabase.get(app)
+        val repo = RoomAlarmRepository(db.alarmDao())
+        repo.upsert(Alarm(id = "o1", hour = 6, minute = 0, repeatDays = 0, enabled = true))
+
+        val intent = Intent(app, AlarmReceiver::class.java)
+            .putExtra(AlarmIntents.EXTRA_ID, "o1")
+            .putExtra(AlarmIntents.EXTRA_LABEL, "")
+            .putExtra(AlarmIntents.EXTRA_SNOOZE, false)
+        AlarmReceiver().onReceive(app, intent)
+
+        val stored = repo.get("o1")
+        assertThat(stored).isNotNull()
+        assertThat(stored!!.enabled).isFalse()
+    }
 }

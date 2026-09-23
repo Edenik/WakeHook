@@ -15,8 +15,13 @@ object AlarmIntents {
     const val EXTRA_ID = "alarmId"
     const val EXTRA_LABEL = "label"
     const val EXTRA_SNOOZE = "snooze"
-    /** One stable request code per alarm, reused for its snooze. */
+    /** One stable request code per alarm. */
     fun requestCode(alarmId: String): Int = alarmId.hashCode()
+    /**
+     * Separate request-code namespace for an alarm's snooze fire, so scheduling a snooze
+     * can never clobber the PendingIntent for the alarm's next (re-armed) occurrence.
+     */
+    fun snoozeRequestCode(alarmId: String): Int = requestCode(alarmId) xor 0x53_4E_5A
 }
 
 class AlarmScheduler(private val context: Context) {
@@ -39,6 +44,9 @@ class AlarmScheduler(private val context: Context) {
         val pi = fireIntent(alarmId, null)
         am.cancel(pi)
         pi.cancel()
+        val snoozePi = fireIntent(alarmId, null, snooze = true)
+        am.cancel(snoozePi)
+        snoozePi.cancel()
     }
 
     suspend fun rescheduleAll(repo: AlarmRepository) {
@@ -54,7 +62,9 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmIntents.EXTRA_LABEL, label ?: "")
             putExtra(AlarmIntents.EXTRA_SNOOZE, snooze)
         }
-        return PendingIntent.getBroadcast(context, AlarmIntents.requestCode(alarmId), i,
+        val requestCode = if (snooze) AlarmIntents.snoozeRequestCode(alarmId)
+            else AlarmIntents.requestCode(alarmId)
+        return PendingIntent.getBroadcast(context, requestCode, i,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 

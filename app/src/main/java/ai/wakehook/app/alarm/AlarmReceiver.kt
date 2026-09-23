@@ -36,7 +36,14 @@ class AlarmReceiver : BroadcastReceiver() {
                     val a = repo.get(id)
                     if (a != null) {
                         label = a.label
-                        if (a.enabled && a.isRecurring) AlarmScheduler(context).schedule(a)
+                        if (a.enabled && a.isRecurring) {
+                            AlarmScheduler(context).schedule(a)
+                        } else if (a.enabled && !a.isRecurring && !a.isDateBased) {
+                            // One-time alarm: turn it off so BootReceiver.rescheduleAll (which
+                            // relies on AlarmTime.nextTrigger, always future for one-time alarms)
+                            // doesn't re-arm it for the next day, and the list shows it as off.
+                            repo.upsert(a.copy(enabled = false))
+                        }
                     }
                 }
                 showRing(context, id, label)
