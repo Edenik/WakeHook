@@ -5,6 +5,7 @@ import ai.wakehook.app.alarm.AlarmScheduler
 import ai.wakehook.app.data.AlarmDatabase
 import ai.wakehook.app.data.RoomAlarmRepository
 import ai.wakehook.app.domain.Alarm
+import ai.wakehook.app.sync.FakeTombstoneStore
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,7 +28,7 @@ class AlarmListViewModelTest {
     @Test fun toggle_flipsEnabledAndPersists() = runTest(dispatcher) {
         val repo = RoomAlarmRepository(AlarmDatabase.get(app).alarmDao())
         repo.upsert(Alarm(id = "a1", enabled = true))
-        val vm = AlarmListViewModel(repo, AlarmScheduler(app))
+        val vm = AlarmListViewModel(repo, AlarmScheduler(app), FakeTombstoneStore())
 
         vm.toggle(Alarm(id = "a1", enabled = true))
         advanceUntilIdle()
@@ -38,11 +39,27 @@ class AlarmListViewModelTest {
     @Test fun delete_removesFromRepo() = runTest(dispatcher) {
         val repo = RoomAlarmRepository(AlarmDatabase.get(app).alarmDao())
         repo.upsert(Alarm(id = "a1"))
-        val vm = AlarmListViewModel(repo, AlarmScheduler(app))
+        val vm = AlarmListViewModel(repo, AlarmScheduler(app), FakeTombstoneStore())
 
         vm.delete("a1")
         advanceUntilIdle()
 
         assertThat(repo.get("a1")).isNull()
+    }
+
+    @Test fun delete_recordsTombstone() = runTest(dispatcher) {
+        val repo = RoomAlarmRepository(AlarmDatabase.get(app).alarmDao())
+        repo.upsert(Alarm(id = "a1"))
+        val tombstones = FakeTombstoneStore()
+        val vm = AlarmListViewModel(repo, AlarmScheduler(app), tombstones)
+
+        vm.delete("a1")
+        advanceUntilIdle()
+        // repo.delete() hops onto Room's real (non-virtual-time) executor thread; awaiting a
+        // suspend Room call here forces this test's coroutine to synchronize with that FIFO
+        // executor, guaranteeing delete()'s later in-memory tombstones.add(id) has also run.
+        assertThat(repo.get("a1")).isNull()
+
+        assertThat(tombstones.local()).contains("a1")
     }
 }

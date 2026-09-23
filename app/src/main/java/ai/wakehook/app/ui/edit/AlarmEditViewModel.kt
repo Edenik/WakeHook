@@ -21,9 +21,11 @@ class AlarmEditViewModel(
         alarm.copy(repeatDays = alarm.repeatDays xor dayBit(day))
 
     fun save(alarm: Alarm) = viewModelScope.launch {
-        repo.upsert(alarm)
-        scheduler.cancel(alarm.id)
-        if (alarm.enabled) scheduler.schedule(alarm)
+        // Bump version so this local edit outranks a stale remote copy in the next merge.
+        val bumped = alarm.copy(version = alarm.version + 1)
+        repo.upsert(bumped)
+        scheduler.cancel(bumped.id)
+        if (bumped.enabled) scheduler.schedule(bumped)
         onMutated()
     }
 }

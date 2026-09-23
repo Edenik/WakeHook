@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                 val nav = rememberNavController()
                 NavHost(nav, startDestination = "list") {
                     composable("list") {
-                        val vm = AlarmListViewModel(container.repository, container.scheduler) {
+                        val vm = AlarmListViewModel(container.repository, container.scheduler, container.tombstones) {
                             SyncTrigger.now(container.appContext)
                         }
                         AlarmListScreen(vm,
