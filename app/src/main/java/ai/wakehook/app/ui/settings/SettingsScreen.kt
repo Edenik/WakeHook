@@ -14,9 +14,21 @@ fun SettingsScreen(
     onFixNotifications: () -> Unit,
     onFixBattery: () -> Unit,
     onFixFullScreenIntent: () -> Unit,
+    driveConnected: Boolean = false,
+    lastSyncMillis: Long = 0L,
+    onConnectDrive: () -> Unit = {},
+    onSyncNow: () -> Unit = {},
+    onCopyPrompt: () -> Unit = {},
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DriveSection(
+                connected = driveConnected,
+                lastSyncMillis = lastSyncMillis,
+                onConnect = onConnectDrive,
+                onSyncNow = onSyncNow,
+                onCopyPrompt = onCopyPrompt,
+            )
             PermRow("Exact alarms", status.exactAlarm, onFixExactAlarm)
             PermRow("Notifications", status.notifications, onFixNotifications)
             PermRow("Ignore battery optimization", status.batteryExempt, onFixBattery)

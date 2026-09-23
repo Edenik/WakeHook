@@ -1,16 +1,20 @@
 package ai.wakehook.app
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
+import ai.wakehook.app.ui.AgentPrompt
 import ai.wakehook.app.ui.AppContainer
 import ai.wakehook.app.ui.edit.AlarmEditScreen
 import ai.wakehook.app.ui.edit.AlarmEditViewModel
@@ -19,7 +23,20 @@ import ai.wakehook.app.ui.list.AlarmListViewModel
 import ai.wakehook.app.ui.settings.PermissionState
 import ai.wakehook.app.ui.settings.SettingsScreen
 import ai.wakehook.app.ui.theme.WakeHookTheme
+import ai.wakehook.app.sync.AndroidAgentNotifier
+import ai.wakehook.app.sync.GoogleDriveProvider
+import ai.wakehook.app.sync.SyncEngine
+import ai.wakehook.app.sync.SyncState
 import ai.wakehook.app.sync.SyncTrigger
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
@@ -27,6 +44,54 @@ class MainActivity : ComponentActivity() {
     private val requestNotif = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* status re-read on resume */ }
+
+    /** Requests only `drive.file` — the app can see files it creates, nothing else in the user's Drive. */
+    private val googleSignInClient: GoogleSignInClient by lazy {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestScopes(Scope(DriveScopes.DRIVE_FILE))
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(this, gso)
+    }
+
+    /**
+     * Handles the Google Sign-In result. Signing in WILL fail until a real OAuth client is
+     * registered for this app (see `docs/superpowers/plans/oauth-setup.md`) — that failure path
+     * must stay graceful (a toast, no crash), which is exactly what's tested here by hand since
+     * it needs a live account.
+     */
+    private val signInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val provider = GoogleDriveProvider(this, account)
+            container.syncProvider = provider
+            SyncState(this).setConnected(true)
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val engine = SyncEngine(
+                    provider = provider,
+                    repo = container.repository,
+                    scheduler = container.scheduler,
+                    tombstones = container.tombstones,
+                    notifier = AndroidAgentNotifier(applicationContext),
+                    state = SyncState(applicationContext),
+                )
+                try {
+                    engine.firstConnect()
+                } catch (e: Exception) {
+                    // First-sync network/API failures shouldn't crash the app; periodic sync retries.
+                }
+            }
+            SyncTrigger.schedulePeriodic(container.appContext)
+        } catch (e: ApiException) {
+            Toast.makeText(this, "Google sign-in failed (${e.statusCode})", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Google sign-in failed", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +116,7 @@ class MainActivity : ComponentActivity() {
                         EditRoute(nav, back.arguments?.getString("id"))
                     }
                     composable("settings") {
+                        val syncState = SyncState(this@MainActivity)
                         SettingsScreen(
                             status = PermissionState.read(this@MainActivity),
                             onFixExactAlarm = { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) },
@@ -66,6 +132,15 @@ class MainActivity : ComponentActivity() {
                                             Uri.parse("package:$packageName"))
                                     else appSettings()
                                 )
+                            },
+                            driveConnected = syncState.connected(),
+                            lastSyncMillis = syncState.lastSync(),
+                            onConnectDrive = { signInLauncher.launch(googleSignInClient.signInIntent) },
+                            onSyncNow = { SyncTrigger.now(container.appContext) },
+                            onCopyPrompt = {
+                                val clipboard = getSystemService(ClipboardManager::class.java)
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("WakeHook agent prompt", AgentPrompt.build(null)))
+                                Toast.makeText(this@MainActivity, "Copied agent prompt", Toast.LENGTH_SHORT).show()
                             })
                     }
                 }
