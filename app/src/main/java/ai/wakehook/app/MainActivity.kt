@@ -55,6 +55,14 @@ class MainActivity : ComponentActivity() {
                             onFixBattery = {
                                 startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                                     Uri.parse("package:$packageName")))
+                            },
+                            onFixFullScreenIntent = {
+                                startActivity(
+                                    if (Build.VERSION.SDK_INT >= 34)
+                                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                            Uri.parse("package:$packageName"))
+                                    else appSettings()
+                                )
                             })
                     }
                 }

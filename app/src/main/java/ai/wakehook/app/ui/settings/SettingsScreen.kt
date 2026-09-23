@@ -13,12 +13,14 @@ fun SettingsScreen(
     onFixExactAlarm: () -> Unit,
     onFixNotifications: () -> Unit,
     onFixBattery: () -> Unit,
+    onFixFullScreenIntent: () -> Unit,
 ) {
     Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PermRow("Exact alarms", status.exactAlarm, onFixExactAlarm)
             PermRow("Notifications", status.notifications, onFixNotifications)
             PermRow("Ignore battery optimization", status.batteryExempt, onFixBattery)
+            PermRow("Full-screen alarms", status.fullScreenIntent, onFixFullScreenIntent)
         }
     }
 }

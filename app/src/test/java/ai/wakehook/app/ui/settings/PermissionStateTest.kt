@@ -15,5 +15,6 @@ class PermissionStateTest {
         assertThat(status.exactAlarm).isAnyOf(true, false)
         assertThat(status.notifications).isAnyOf(true, false)
         assertThat(status.batteryExempt).isAnyOf(true, false)
+        assertThat(status.fullScreenIntent).isAnyOf(true, false)
     }
 }
