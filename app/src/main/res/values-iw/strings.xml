@@ -74,6 +74,7 @@
     <!-- Native design -->
     <string name="back">חזרה</string>
     <string name="cancel">ביטול</string>
+    <string name="done">סיום</string>
     <string name="alarms">התראות</string>
     <string name="next_alarm">ההתראה הבאה</string>
     <string name="your_alarms">ההתראות שלך</string>
@@ -134,13 +135,43 @@
     <string name="schedule_weekdays">ימי חול</string>
     <string name="schedule_weekends">סופי שבוע</string>
     <string name="specific_dates_count">%1$d תאריכים נבחרים</string>
-    <string name="date_ranges_count">%1$d טווחי תאריכים</string>
+    <string name="specific_dates">תאריכים נבחרים</string>
+    <string name="date_selections_count">%1$d בחירות תאריך</string>
     <string name="select_date_range">בחירת טווח תאריכים</string>
+    <string name="date_range">טווח תאריכים</string>
+    <string name="select_dates_title">הוספת תאריכים</string>
+    <string name="choose_multiple_dates">בחירת תאריך אחד או יותר</string>
+    <string name="date_range_ready">טווח התאריכים נבחר</string>
+    <string name="previous_month">החודש הקודם</string>
+    <string name="next_month">החודש הבא</string>
     <string name="add_date_range">הוספת טווח</string>
+    <string name="add_multiple_dates">הוספת תאריכים</string>
     <string name="add_date_range_hint">הוסיפו טווח תאריכים אחד או יותר בעתיד</string>
     <string name="remove_date_range">הסרת טווח התאריכים %1$s</string>
     <string name="alarm_in_minutes">בעוד %1$d דק׳</string>
-    <string name="alarm_in_hours_minutes">בעוד %1$d שע׳ ו־%2$d דק׳</string>
+    <string name="alarm_in_hours_minutes">בעוד %1$d שעות ו־%2$d דקות</string>
+    <string name="alarm_in_one_unit">בעוד %1$s</string>
+    <string name="alarm_in_two_units">בעוד %1$s ו־%2$s</string>
+    <plurals name="year_count">
+        <item quantity="one">%d שנה</item>
+        <item quantity="two">%d שנים</item>
+        <item quantity="other">%d שנים</item>
+    </plurals>
+    <plurals name="month_count">
+        <item quantity="one">%d חודש</item>
+        <item quantity="two">%d חודשים</item>
+        <item quantity="other">%d חודשים</item>
+    </plurals>
+    <plurals name="day_unit_count">
+        <item quantity="one">%d יום</item>
+        <item quantity="two">%d יומיים</item>
+        <item quantity="other">%d ימים</item>
+    </plurals>
+    <plurals name="hour_unit_count">
+        <item quantity="one">%d שעה</item>
+        <item quantity="two">%d שעתיים</item>
+        <item quantity="other">%d שעות</item>
+    </plurals>
     <string name="choose_start_date">בחירת תאריך התחלה</string>
     <string name="choose_end_date">בחירת תאריך סיום</string>
     <string name="next_date_step">הבא</string>

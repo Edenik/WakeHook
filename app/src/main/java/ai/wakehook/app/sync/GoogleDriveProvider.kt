@@ -1,7 +1,9 @@
 package ai.wakehook.app.sync
 
 import android.content.Context
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.common.api.Scope
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.ByteArrayContent
@@ -190,5 +192,12 @@ class GoogleDriveProvider(
         private const val MD_FILE_NAME = "wakehook.md"
         private const val JSON_MIME_TYPE = "application/json"
         private const val MD_MIME_TYPE = "text/markdown"
+
+        /** Rebuilds the provider in a fresh app process when the Google session still grants Drive access. */
+        fun restore(context: Context): GoogleDriveProvider? {
+            val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
+            if (!GoogleSignIn.hasPermissions(account, Scope(DriveScopes.DRIVE_FILE))) return null
+            return GoogleDriveProvider(context.applicationContext, account)
+        }
     }
 }

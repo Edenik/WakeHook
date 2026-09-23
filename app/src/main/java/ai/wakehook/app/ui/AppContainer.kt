@@ -18,11 +18,7 @@ class AppContainer(context: Context) {
     /** Records ids deleted locally, so [ai.wakehook.app.sync.SyncEngine] doesn't resurrect them. */
     val tombstones: TombstoneStore = PrefsTombstoneStore(appContext)
 
-    /**
-     * The active [SyncProvider], set once the user signs in to Google Drive. The real provider
-     * is wired here in a later task; until then this stays null and [ai.wakehook.app.sync.SyncWorker]
-     * treats that as "not connected" and no-ops.
-     */
+    /** Active Drive provider, restored by [ai.wakehook.app.WakeHookApp] before workers can run. */
     @Volatile var syncProvider: SyncProvider? = null
 }
 

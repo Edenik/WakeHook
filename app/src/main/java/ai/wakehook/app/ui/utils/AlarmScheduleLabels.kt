@@ -34,7 +34,7 @@ fun weeklyScheduleLabel(repeatDays: Int, locale: Locale = Locale.getDefault()): 
 fun dateScheduleLabel(dates: Collection<LocalDate>, locale: Locale = Locale.getDefault()): String {
     val ranges = groupAlarmDates(dates)
     return when {
-        ranges.size > 1 -> stringResource(R.string.date_ranges_count, ranges.size)
+        ranges.size > 1 -> stringResource(R.string.date_selections_count, ranges.size)
         ranges.size == 1 -> ranges.single().displayLabel(locale)
         else -> stringResource(R.string.add_date_range_hint)
     }

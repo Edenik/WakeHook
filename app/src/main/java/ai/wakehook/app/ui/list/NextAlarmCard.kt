@@ -11,15 +11,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.wakehook.app.R
 import ai.wakehook.app.ui.theme.Sunrise
-import java.time.Duration
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /** Compact summary of the next scheduled alarm, matching the home mockup. */
@@ -62,9 +63,34 @@ internal fun NextAlarmCard(next: NextAlarm?, now: ZonedDateTime, onEdit: (String
 
 @Composable
 private fun relativeTime(triggerAt: Long, now: ZonedDateTime): String {
-    val minutes = Duration.between(now.toInstant(), Instant.ofEpochMilli(triggerAt)).toMinutes().coerceAtLeast(0)
-    val hours = minutes / 60
-    val remaining = minutes % 60
-    return if (hours == 0L) stringResource(R.string.alarm_in_minutes, minutes)
-    else stringResource(R.string.alarm_in_hours_minutes, hours, remaining)
+    val target = Instant.ofEpochMilli(triggerAt).atZone(now.zone)
+    if (!target.isAfter(now)) return stringResource(R.string.alarm_in_minutes, 0)
+
+    var cursor = now
+    val years = ChronoUnit.YEARS.between(cursor, target).toInt()
+    cursor = cursor.plusYears(years.toLong())
+    val months = ChronoUnit.MONTHS.between(cursor, target).toInt()
+    cursor = cursor.plusMonths(months.toLong())
+    val days = ChronoUnit.DAYS.between(cursor, target).toInt()
+    cursor = cursor.plusDays(days.toLong())
+    val hours = ChronoUnit.HOURS.between(cursor, target).toInt()
+    cursor = cursor.plusHours(hours.toLong())
+    val minutes = ChronoUnit.MINUTES.between(cursor, target).toInt()
+
+    if (years == 0 && months == 0 && days == 0) {
+        return if (hours > 0) stringResource(R.string.alarm_in_hours_minutes, hours, minutes)
+        else stringResource(R.string.alarm_in_minutes, minutes.toLong())
+    }
+
+    val units = buildList {
+        if (years > 0) add(pluralStringResource(R.plurals.year_count, years, years))
+        if (months > 0) add(pluralStringResource(R.plurals.month_count, months, months))
+        if (days > 0) add(pluralStringResource(R.plurals.day_unit_count, days, days))
+        if (hours > 0) add(pluralStringResource(R.plurals.hour_unit_count, hours, hours))
+    }
+    return when {
+        units.size > 1 -> stringResource(R.string.alarm_in_two_units, units[0], units[1])
+        units.isNotEmpty() -> stringResource(R.string.alarm_in_one_unit, units[0])
+        else -> stringResource(R.string.alarm_in_minutes, 0)
+    }
 }

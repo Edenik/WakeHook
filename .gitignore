@@ -1,5 +1,8 @@
 # Local docs (kept on disk, not tracked)
 docs/
+!docs/
+docs/*
+!docs/logo-generation-prompt.md
 
 # Android build
 .gradle/

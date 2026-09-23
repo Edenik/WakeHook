@@ -87,10 +87,15 @@ private fun SnoozeOptionsDialog(settings: AlarmPlaybackSettings, onDismiss: () -
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.snooze_duration), style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     listOf(5, 10, 15, 30).forEach { value -> FilterChip(
                         selected = minutes == value, onClick = { minutes = value },
-                        label = { Text(stringResource(R.string.minutes_short, value)) }, modifier = Modifier.heightIn(min = 44.dp)) }
+                        label = { Text(stringResource(R.string.minutes_short, value), maxLines = 1, softWrap = false) },
+                        modifier = Modifier.heightIn(min = 44.dp)) }
                 }
                 Text(stringResource(R.string.snooze_limit), style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(top = 8.dp))
