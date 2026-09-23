@@ -22,6 +22,8 @@ import ai.wakehook.app.ui.list.AlarmListScreen
 import ai.wakehook.app.ui.list.AlarmListViewModel
 import ai.wakehook.app.ui.settings.PermissionState
 import ai.wakehook.app.ui.settings.SettingsScreen
+import ai.wakehook.app.ui.onboarding.OnboardingFlow
+import ai.wakehook.app.ui.onboarding.OnboardingState
 import ai.wakehook.app.ui.theme.WakeHookTheme
 import ai.wakehook.app.sync.AndroidAgentNotifier
 import ai.wakehook.app.sync.GoogleDriveProvider
@@ -101,7 +103,35 @@ class MainActivity : ComponentActivity() {
         setContent {
             WakeHookTheme {
                 val nav = rememberNavController()
-                NavHost(nav, startDestination = "list") {
+                val start = if (OnboardingState(this@MainActivity).isDone()) "list" else "onboarding"
+                NavHost(nav, startDestination = start) {
+                    composable("onboarding") {
+                        val syncState = SyncState(this@MainActivity)
+                        OnboardingFlow(
+                            status = PermissionState.read(this@MainActivity),
+                            driveConnected = syncState.connected(),
+                            onFixExactAlarm = { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) },
+                            onFixNotifications = { startActivity(appSettings()) },
+                            onFixBattery = {
+                                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                    Uri.parse("package:$packageName")))
+                            },
+                            onFixFullScreen = {
+                                startActivity(
+                                    if (Build.VERSION.SDK_INT >= 34)
+                                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
+                                    else appSettings()
+                                )
+                            },
+                            onConnectDrive = { signInLauncher.launch(googleSignInClient.signInIntent) },
+                            onCopyPrompt = { copyAgentPrompt() },
+                            onRevoke = { revokeAccess() },
+                            onFinish = {
+                                OnboardingState(this@MainActivity).setDone()
+                                nav.navigate("list") { popUpTo("onboarding") { inclusive = true } }
+                            },
+                        )
+                    }
                     composable("list") {
                         val vm = AlarmListViewModel(container.repository, container.scheduler, container.tombstones) {
                             SyncTrigger.now(container.appContext)
@@ -137,11 +167,7 @@ class MainActivity : ComponentActivity() {
                             lastSyncMillis = syncState.lastSync(),
                             onConnectDrive = { signInLauncher.launch(googleSignInClient.signInIntent) },
                             onSyncNow = { SyncTrigger.now(container.appContext) },
-                            onCopyPrompt = {
-                                val clipboard = getSystemService(ClipboardManager::class.java)
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("WakeHook agent prompt", AgentPrompt.build(null)))
-                                Toast.makeText(this@MainActivity, "Copied agent prompt", Toast.LENGTH_SHORT).show()
-                            })
+                            onCopyPrompt = { copyAgentPrompt() })
                     }
                 }
             }
@@ -163,4 +189,15 @@ class MainActivity : ComponentActivity() {
 
     private fun appSettings() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
         Uri.parse("package:$packageName"))
+
+    private fun copyAgentPrompt() {
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("WakeHook agent prompt", AgentPrompt.build(null)))
+        Toast.makeText(this, "Copied agent prompt", Toast.LENGTH_SHORT).show()
+    }
+
+    /** One-tap revoke — opens the Google account permissions page so the user can cut WakeHook off. */
+    private fun revokeAccess() {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://myaccount.google.com/permissions")))
+    }
 }
