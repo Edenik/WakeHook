@@ -194,7 +194,7 @@ class MainActivity : ComponentActivity() {
     private fun copyAgentPrompt() {
         val clipboard = getSystemService(ClipboardManager::class.java)
         clipboard?.setPrimaryClip(ClipData.newPlainText("WakeHook agent prompt", AgentPrompt.build(null)))
-        Toast.makeText(this, "Copied agent prompt", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.copied_agent_prompt), Toast.LENGTH_SHORT).show()
     }
 
     /** One-tap revoke — opens the Google account permissions page so the user can cut WakeHook off. */

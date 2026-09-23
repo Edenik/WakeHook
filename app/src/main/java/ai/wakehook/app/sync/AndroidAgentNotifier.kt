@@ -29,7 +29,8 @@ class AndroidAgentNotifier(private val context: Context) : AgentNotifier {
     }
 
     private fun post(nmCompat: NotificationManagerCompat, alarm: Alarm, changed: Boolean) {
-        val title = if (changed) "${alarm.source} changed an alarm" else "${alarm.source} set an alarm"
+        val title = context.getString(
+            if (changed) R.string.agent_changed_alarm else R.string.agent_set_alarm, alarm.source)
         val time = "%02d:%02d".format(alarm.hour, alarm.minute)
         val text = if (alarm.label.isBlank()) time else "$time · ${alarm.label}"
 
@@ -55,7 +56,7 @@ class AndroidAgentNotifier(private val context: Context) : AgentNotifier {
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val ch = NotificationChannel(CHANNEL, "Agent activity", NotificationManager.IMPORTANCE_LOW)
+            val ch = NotificationChannel(CHANNEL, context.getString(R.string.channel_agent_activity), NotificationManager.IMPORTANCE_LOW)
             nm.createNotificationChannel(ch)
         }
     }

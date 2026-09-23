@@ -12,8 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ai.wakehook.app.R
 import ai.wakehook.app.domain.Alarm
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,10 +31,10 @@ fun AlarmListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("WakeHook") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
                     }
                 }
             )
@@ -41,16 +44,16 @@ fun AlarmListScreen(
                 onClick = onAdd,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) { Icon(Icons.Filled.Add, "Add alarm") }
+            ) { Icon(Icons.Filled.Add, stringResource(R.string.add_alarm)) }
         }
     ) { padding ->
         if (alarms.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    "No alarms yet.\nTap + to add one — or connect Google Drive in Settings so an agent can set them.",
+                    stringResource(R.string.empty_alarms),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    textAlign = TextAlign.Center,
                 )
             }
         } else {
