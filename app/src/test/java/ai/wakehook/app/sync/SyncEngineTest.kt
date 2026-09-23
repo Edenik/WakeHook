@@ -131,4 +131,21 @@ class SyncEngineTest {
         val remote = WakeHookJson.decode(provider.readJson()!!.content)
         assertThat(remote.alarms.map { it.id }).doesNotContain("a1")
     }
+
+    @Test fun firstConnect_onFreshProvider_seedsExampleAlarmsAndAgentGuide() = runTest {
+        assertThat(provider.readJson()).isNull()
+
+        engine.firstConnect()
+
+        val remote = WakeHookJson.decode(provider.readJson()!!.content)
+        val seedIds = Seed.exampleAlarms().map { it.id }
+        assertThat(remote.alarms.map { it.id }).containsExactlyElementsIn(seedIds)
+        assertThat(remote.alarms.all { !it.enabled }).isTrue()
+
+        val stored = seedIds.map { repo.get(it) }
+        assertThat(stored).doesNotContain(null)
+        assertThat(stored.all { it!!.enabled == false }).isTrue()
+
+        assertThat(provider.md).isEqualTo(Seed.MARKDOWN)
+    }
 }

@@ -24,6 +24,17 @@ class SyncEngine(
     val notifier: AgentNotifier,
     val state: SyncState,
 ) {
+    /**
+     * Seeds a brand-new `WakeHook/` folder with the example alarms + agent guide if the remote
+     * `wakehook.json` doesn't exist yet, then runs a normal [sync] to pull it in locally.
+     */
+    suspend fun firstConnect() {
+        if (provider.readJson() == null) {
+            provider.ensureFolderAndFiles(WakeHookJson.encode(Seed.exampleAlarms()), Seed.MARKDOWN)
+        }
+        sync()
+    }
+
     suspend fun sync(): SyncOutcome {
         val remoteFile = provider.readJson()
         val rawRemoteAlarms = remoteFile?.let { WakeHookJson.decode(it.content).alarms } ?: emptyList()
