@@ -1,5 +1,6 @@
 package ai.wakehook.app.ui.list
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,12 +37,27 @@ fun AlarmListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAdd) { Icon(Icons.Filled.Add, "Add alarm") }
+            FloatingActionButton(
+                onClick = onAdd,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) { Icon(Icons.Filled.Add, "Add alarm") }
         }
     ) { padding ->
-        LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-            items(alarms, key = { it.id }) { a ->
-                AlarmRow(a, onToggle = { vm.toggle(a) }, onClick = { onEdit(a.id) })
+        if (alarms.isEmpty()) {
+            Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "No alarms yet.\nTap + to add one — or connect Google Drive in Settings so an agent can set them.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        } else {
+            LazyColumn(Modifier.padding(padding).fillMaxSize()) {
+                items(alarms, key = { it.id }) { a ->
+                    AlarmRow(a, onToggle = { vm.toggle(a) }, onClick = { onEdit(a.id) })
+                }
             }
         }
     }
@@ -53,6 +69,6 @@ private fun AlarmRow(a: Alarm, onToggle: () -> Unit, onClick: () -> Unit) {
         headlineContent = { Text("%02d:%02d".format(a.hour, a.minute)) },
         supportingContent = { if (a.label.isNotEmpty()) Text(a.label) },
         trailingContent = { Switch(checked = a.enabled, onCheckedChange = { onToggle() }) },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 8.dp)
     )
 }

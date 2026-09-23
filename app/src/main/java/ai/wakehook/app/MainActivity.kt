@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         container = (application as WakeHookApp).container
+        seedLocalExamplesOnce()
         if (Build.VERSION.SDK_INT >= 33) requestNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
 
         setContent {
@@ -199,5 +200,25 @@ class MainActivity : ComponentActivity() {
     /** One-tap revoke — opens the Google account permissions page so the user can cut WakeHook off. */
     private fun revokeAccess() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://myaccount.google.com/permissions")))
+    }
+
+    /**
+     * First launch: drop the disabled example alarms into the local DB so the list is never blank,
+     * even before Google Drive is connected. Stable seed ids dedupe with the Drive seed once
+     * connected. Runs once (flag-guarded), only if the DB is empty. Lives here (not in the
+     * Application) so it never runs in unit tests, which construct WakeHookApp but not MainActivity.
+     */
+    private fun seedLocalExamplesOnce() {
+        val prefs = getSharedPreferences("wakehook_local_seed", MODE_PRIVATE)
+        if (prefs.getBoolean("done", false)) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (container.repository.getAll().isEmpty()) {
+                    ai.wakehook.app.sync.Seed.exampleAlarms().forEach { container.repository.upsert(it) }
+                }
+            } finally {
+                prefs.edit().putBoolean("done", true).apply()
+            }
+        }
     }
 }
