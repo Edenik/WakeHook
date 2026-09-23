@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import ai.wakehook.app.R
 import ai.wakehook.app.data.AlarmDatabase
 import ai.wakehook.app.data.RoomAlarmRepository
+import ai.wakehook.app.sync.SyncTrigger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
@@ -47,6 +48,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                 }
                 showRing(context, id, label)
+                SyncTrigger.now(context)
             } finally { pending?.finish() }
         }
     }

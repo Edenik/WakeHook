@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 class AlarmListViewModel(
     private val repo: AlarmRepository,
     private val scheduler: AlarmScheduler,
+    /** Fired after any local mutation, so a two-way sync can pick it up promptly. No-op by default. */
+    private val onMutated: () -> Unit = {},
 ) : ViewModel() {
     val alarms: StateFlow<List<Alarm>> = repo.observeAlarms()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -22,10 +24,12 @@ class AlarmListViewModel(
         repo.upsert(updated)
         scheduler.cancel(updated.id)
         if (updated.enabled) scheduler.schedule(updated)
+        onMutated()
     }
 
     fun delete(id: String) = viewModelScope.launch {
         repo.delete(id)
         scheduler.cancel(id)
+        onMutated()
     }
 }

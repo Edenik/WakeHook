@@ -19,6 +19,7 @@ import ai.wakehook.app.ui.list.AlarmListViewModel
 import ai.wakehook.app.ui.settings.PermissionState
 import ai.wakehook.app.ui.settings.SettingsScreen
 import ai.wakehook.app.ui.theme.WakeHookTheme
+import ai.wakehook.app.sync.SyncTrigger
 
 class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
@@ -37,7 +38,9 @@ class MainActivity : ComponentActivity() {
                 val nav = rememberNavController()
                 NavHost(nav, startDestination = "list") {
                     composable("list") {
-                        val vm = AlarmListViewModel(container.repository, container.scheduler)
+                        val vm = AlarmListViewModel(container.repository, container.scheduler) {
+                            SyncTrigger.now(container.appContext)
+                        }
                         AlarmListScreen(vm,
                             onAdd = { nav.navigate("edit") },
                             onEdit = { id -> nav.navigate("edit?id=$id") },
@@ -72,8 +75,15 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun EditRoute(nav: androidx.navigation.NavController, id: String?) {
-        val vm = AlarmEditViewModel(container.repository, container.scheduler)
+        val vm = AlarmEditViewModel(container.repository, container.scheduler) {
+            SyncTrigger.now(container.appContext)
+        }
         AlarmEditScreen(vm, id) { nav.popBackStack() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        SyncTrigger.now(container.appContext)
     }
 
     private fun appSettings() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

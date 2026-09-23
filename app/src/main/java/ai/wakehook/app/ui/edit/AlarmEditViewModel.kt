@@ -12,6 +12,8 @@ import java.time.DayOfWeek
 class AlarmEditViewModel(
     private val repo: AlarmRepository,
     private val scheduler: AlarmScheduler,
+    /** Fired after a save, so a two-way sync can pick it up promptly. No-op by default. */
+    private val onMutated: () -> Unit = {},
 ) : ViewModel() {
     suspend fun load(id: String?): Alarm = id?.let { repo.get(it) } ?: Alarm()
 
@@ -22,5 +24,6 @@ class AlarmEditViewModel(
         repo.upsert(alarm)
         scheduler.cancel(alarm.id)
         if (alarm.enabled) scheduler.schedule(alarm)
+        onMutated()
     }
 }
