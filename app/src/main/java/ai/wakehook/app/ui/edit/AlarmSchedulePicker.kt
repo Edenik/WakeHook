@@ -114,10 +114,12 @@ fun AlarmSchedulePicker(
         }
     }
 
-    if (showDateRangePicker) AlarmDateRangePicker(
+    if (showDateRangePicker) AlarmDatePicker(
+        selectedDates = alarm.dates,
         onDismiss = { showDateRangePicker = false },
-        onAddRange = { range ->
-            onAlarmChange(alarm.copy(repeatDays = 0, dates = (alarm.dates + range.dates()).distinct().sorted()))
+        onAddDates = { ranges ->
+            val addedDates = ranges.flatMap { it.dates() }
+            onAlarmChange(alarm.copy(repeatDays = 0, dates = (alarm.dates + addedDates).distinct().sorted()))
             onModeChange(AlarmScheduleMode.DATES)
         },
     )

@@ -74,6 +74,7 @@
     <!-- Native design -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
+    <string name="done">Done</string>
     <string name="alarms">Alarms</string>
     <string name="next_alarm">NEXT ALARM</string>
     <string name="your_alarms">YOUR ALARMS</string>
@@ -135,13 +136,39 @@
     <string name="schedule_weekdays">Weekdays</string>
     <string name="schedule_weekends">Weekends</string>
     <string name="specific_dates_count">%1$d specific dates</string>
-    <string name="date_ranges_count">%1$d date ranges</string>
+    <string name="specific_dates">Specific dates</string>
+    <string name="date_selections_count">%1$d date selections</string>
     <string name="select_date_range">Select date range</string>
+    <string name="date_range">Date range</string>
+    <string name="select_dates_title">Add dates</string>
+    <string name="choose_multiple_dates">Choose one or more dates</string>
+    <string name="date_range_ready">Date range selected</string>
+    <string name="previous_month">Previous month</string>
+    <string name="next_month">Next month</string>
     <string name="add_date_range">Add range</string>
+    <string name="add_multiple_dates">Add dates</string>
     <string name="add_date_range_hint">Add one or more future date ranges</string>
     <string name="remove_date_range">Remove date range %1$s</string>
     <string name="alarm_in_minutes">in %1$d min</string>
-    <string name="alarm_in_hours_minutes">in %1$d h %2$d min</string>
+    <string name="alarm_in_hours_minutes">in %1$d hr %2$d min</string>
+    <string name="alarm_in_one_unit">in %1$s</string>
+    <string name="alarm_in_two_units">in %1$s and %2$s</string>
+    <plurals name="year_count">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
+    <plurals name="month_count">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="day_unit_count">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="hour_unit_count">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
     <string name="choose_start_date">Choose start date</string>
     <string name="choose_end_date">Choose end date</string>
     <string name="next_date_step">Next</string>
