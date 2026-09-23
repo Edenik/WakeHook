@@ -17,3 +17,6 @@ keystore.properties
 .idea/
 *.iml
 .DS_Store
+
+# SDD scratch
+.superpowers/
