@@ -5,6 +5,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.Configuration
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.WorkManagerTestInitHelper
 import ai.wakehook.app.data.AlarmDatabase
 import ai.wakehook.app.data.RoomAlarmRepository
 import ai.wakehook.app.data.toEntity
@@ -12,6 +15,7 @@ import ai.wakehook.app.domain.Alarm
 import ai.wakehook.app.domain.dayBit
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,6 +24,13 @@ import java.time.DayOfWeek
 @RunWith(RobolectricTestRunner::class)
 class AlarmReceiverTest {
     private val app: Application = ApplicationProvider.getApplicationContext()
+
+    // AlarmReceiver fires SyncTrigger.now() after handling a fire (Task 8), which needs a
+    // WorkManager instance; the production manifest auto-initializes one, Robolectric doesn't.
+    @Before fun setupWorkManager() {
+        val config = Configuration.Builder().setExecutor(SynchronousExecutor()).build()
+        WorkManagerTestInitHelper.initializeTestWorkManager(app, config)
+    }
 
     private fun pending(id: String): PendingIntent? = PendingIntent.getBroadcast(
         app, AlarmIntents.requestCode(id),

@@ -14,6 +14,12 @@ data class AlarmEntity(
     val repeatDays: Int,
     val dates: String,   // ISO yyyy-MM-dd joined by ","; "" = none
     val enabled: Boolean,
+    val source: String,
+    val version: Long,
+    val ackState: String,
+    val ackAt: String,
+    val ackError: String,
+    val snoozedUntil: Long?,
 )
 
 fun AlarmEntity.toDomain() = Alarm(
@@ -24,6 +30,12 @@ fun AlarmEntity.toDomain() = Alarm(
     repeatDays = repeatDays,
     dates = if (dates.isBlank()) emptyList() else dates.split(",").map(LocalDate::parse),
     enabled = enabled,
+    source = source,
+    version = version,
+    ackState = ackState,
+    ackAt = ackAt,
+    ackError = ackError,
+    snoozedUntil = snoozedUntil,
 )
 
 fun Alarm.toEntity() = AlarmEntity(
@@ -34,4 +46,10 @@ fun Alarm.toEntity() = AlarmEntity(
     repeatDays = repeatDays,
     dates = dates.joinToString(",") { it.toString() },
     enabled = enabled,
+    source = source,
+    version = version,
+    ackState = ackState,
+    ackAt = ackAt,
+    ackError = ackError,
+    snoozedUntil = snoozedUntil,
 )

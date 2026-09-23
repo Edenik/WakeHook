@@ -23,7 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import ai.wakehook.app.data.AlarmDatabase
+import ai.wakehook.app.data.RoomAlarmRepository
+import ai.wakehook.app.sync.SyncTrigger
 import ai.wakehook.app.ui.theme.WakeHookTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -57,8 +63,10 @@ class RingActivity : ComponentActivity() {
                     label = currentLabel,
                     onDismiss = { stopAll(currentId); finish() },
                     onSnooze = {
-                        AlarmScheduler(this).scheduleSnooze(currentId, currentLabel,
-                            System.currentTimeMillis() + 10 * 60 * 1000L)
+                        val id = currentId
+                        val snoozedUntil = System.currentTimeMillis() + 10 * 60 * 1000L
+                        AlarmScheduler(this).scheduleSnooze(id, currentLabel, snoozedUntil)
+                        persistSnooze(id, snoozedUntil)
                         stopAll(currentId); finish()
                     },
                 )
@@ -87,6 +95,23 @@ class RingActivity : ComponentActivity() {
         loadFromIntent(intent)
         acquireWakeLock()
         startRinging()
+    }
+
+    /**
+     * Persists the snooze on the alarm itself (`snoozedUntil` + a version bump so this local
+     * change wins the next merge) and kicks off a sync so agents/other views see it. Runs off
+     * the main thread; if the alarm no longer exists (e.g. deleted mid-ring) it just proceeds.
+     */
+    private fun persistSnooze(id: String, snoozedUntil: Long) {
+        val appContext = applicationContext
+        CoroutineScope(Dispatchers.IO).launch {
+            val repo = RoomAlarmRepository(AlarmDatabase.get(appContext).alarmDao())
+            val alarm = repo.get(id)
+            if (alarm != null) {
+                repo.upsert(alarm.copy(snoozedUntil = snoozedUntil, version = alarm.version + 1))
+            }
+            SyncTrigger.now(appContext)
+        }
     }
 
     private fun loadFromIntent(intent: Intent) {

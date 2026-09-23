@@ -56,4 +56,16 @@ class AlarmRepositoryTest {
         repo.upsert(a)
         assertThat(repo.get("a1")).isEqualTo(a)
     }
+
+    @Test fun upsert_then_get_roundTrips_syncFields() = runTest {
+        val a = Alarm(
+            id = "a1",
+            source = "claude",
+            version = 5,
+            ackState = "scheduled",
+            snoozedUntil = 123L,
+        )
+        repo.upsert(a)
+        assertThat(repo.get("a1")).isEqualTo(a)
+    }
 }
