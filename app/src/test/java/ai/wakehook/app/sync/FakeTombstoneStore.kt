@@ -9,4 +9,8 @@ class FakeTombstoneStore : TombstoneStore {
     override suspend fun add(id: String) {
         ids.add(id)
     }
+
+    override suspend fun remove(id: String) {
+        ids.remove(id)
+    }
 }

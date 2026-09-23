@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
@@ -35,9 +34,12 @@ object SyncTrigger {
 
     fun now(context: Context) {
         runCatching {
-            val request = OneTimeWorkRequestBuilder<SyncWorker>()
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .build()
+            // Deliberately NOT expedited: WorkManager's expedited path requires the worker to
+            // implement getForegroundInfo() on API 26-30 (it falls back to a foreground service
+            // there), which SyncWorker doesn't -- that combination crashes at run time. A plain
+            // one-time request runs within a few seconds via WorkManager's normal scheduling,
+            // which is acceptable for event/manual syncs and avoids the crash entirely.
+            val request = OneTimeWorkRequestBuilder<SyncWorker>().build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 NOW_WORK_NAME,
                 ExistingWorkPolicy.REPLACE,

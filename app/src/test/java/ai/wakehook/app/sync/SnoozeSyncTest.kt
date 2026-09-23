@@ -1,8 +1,12 @@
 package ai.wakehook.app.sync
 
 import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import ai.wakehook.app.alarm.AlarmIntents
+import ai.wakehook.app.alarm.AlarmReceiver
 import ai.wakehook.app.alarm.AlarmScheduler
 import ai.wakehook.app.data.AlarmDatabase
 import ai.wakehook.app.data.AlarmRepository
@@ -47,6 +51,68 @@ class SnoozeSyncTest {
     }
 
     @After fun teardown() = db.close()
+
+    private fun pendingBroadcast(id: String): PendingIntent? = PendingIntent.getBroadcast(
+        app, AlarmIntents.requestCode(id),
+        Intent(app, AlarmReceiver::class.java),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    private fun pendingSnoozeBroadcast(id: String): PendingIntent? = PendingIntent.getBroadcast(
+        app, AlarmIntents.snoozeRequestCode(id),
+        Intent(app, AlarmReceiver::class.java),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    /**
+     * FIX 1 (CRITICAL) regression test: a sync pass used to unconditionally cancel + reschedule
+     * the NORMAL occurrence for every enabled merged alarm, ignoring `snoozedUntil` entirely.
+     * `AlarmScheduler.cancel()` cancels BOTH the normal and snooze PendingIntents, so a sync
+     * racing a live snooze (e.g. triggered by RingActivity.persistSnooze's own SyncTrigger.now())
+     * would kill the armed snooze PendingIntent and never re-arm it -- the snoozed alarm would
+     * simply never ring again for a connected user. This asserts the snooze PendingIntent is
+     * still armed (not left unscheduled) after sync().
+     */
+    @Test fun liveSnooze_survivesSync_snoozePendingIntentStaysArmed_normalOneDoesNot() = runTest {
+        val snoozedUntil = System.currentTimeMillis() + 5 * 60 * 1000L
+        val original = Alarm(id = "a3", label = "Wake", hour = 7, minute = 0, source = "local", version = 1)
+        repo.upsert(original)
+        val snoozed = original.copy(snoozedUntil = snoozedUntil, version = original.version + 1)
+        repo.upsert(snoozed)
+        // Mirrors RingActivity.onSnooze(): the snooze PendingIntent is armed at snooze time,
+        // before any sync runs.
+        scheduler.scheduleSnooze(snoozed.id, snoozed.label, snoozedUntil)
+
+        engine.sync()
+
+        assertThat(pendingSnoozeBroadcast("a3")).isNotNull()
+        assertThat(pendingBroadcast("a3")).isNull()
+
+        val stored = repo.get("a3")
+        assertThat(stored).isNotNull()
+        assertThat(stored!!.snoozedUntil).isEqualTo(snoozedUntil)
+        assertThat(stored.ackState).isEqualTo("scheduled")
+    }
+
+    /** FIX 1: an expired `snoozedUntil` (in the past) must be cleared and the normal occurrence
+     * scheduled instead -- not left dangling forever. */
+    @Test fun expiredSnooze_isClearedAndNormalOccurrenceIsScheduled() = runTest {
+        val pastSnooze = System.currentTimeMillis() - 60_000L
+        val original = Alarm(id = "a4", label = "Wake", hour = 7, minute = 0, source = "local", version = 1)
+        repo.upsert(original)
+        val snoozed = original.copy(snoozedUntil = pastSnooze, version = original.version + 1)
+        repo.upsert(snoozed)
+
+        engine.sync()
+
+        assertThat(pendingBroadcast("a4")).isNotNull()
+        assertThat(pendingSnoozeBroadcast("a4")).isNull()
+
+        val stored = repo.get("a4")
+        assertThat(stored).isNotNull()
+        assertThat(stored!!.snoozedUntil).isNull()
+        assertThat(stored.ackState).isEqualTo("scheduled")
+    }
 
     @Test fun snoozedAlarm_survivesSync_andCarriesSnoozedUntilInRemote() = runTest {
         val snoozedUntil = System.currentTimeMillis() + 10 * 60 * 1000L

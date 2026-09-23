@@ -95,14 +95,18 @@ object WakeHookJson {
         val alarms = mutableListOf<Alarm>()
         for (i in 0 until array.length()) {
             val obj = array.optJSONObject(i) ?: continue
-            alarms.add(decodeAlarm(obj))
+            val alarm = decodeAlarm(obj) ?: continue
+            alarms.add(alarm)
         }
 
         return WakeHookFile(version = version, alarms = alarms)
     }
 
-    private fun decodeAlarm(obj: JSONObject): Alarm {
-        val id = if (obj.has("id") && !obj.isNull("id")) obj.getString("id") else java.util.UUID.randomUUID().toString()
+    /** Returns null (skipping the entry) if [obj] has no usable "id" -- fabricating one would
+     * silently invent a new alarm identity every decode instead of dropping malformed input. */
+    private fun decodeAlarm(obj: JSONObject): Alarm? {
+        val id = if (obj.has("id") && !obj.isNull("id")) obj.getString("id") else ""
+        if (id.isBlank()) return null
         val hour = obj.optInt("hour", 7)
         val minute = obj.optInt("minute", 0)
         val label = obj.optString("label", "")

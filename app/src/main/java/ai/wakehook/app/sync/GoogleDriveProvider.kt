@@ -3,6 +3,7 @@ package ai.wakehook.app.sync
 import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.ByteArrayContent
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
@@ -76,10 +77,18 @@ class GoogleDriveProvider(
 
         jsonFileId = id
 
+        // Only a genuine "file not found" (404) means the remote file is absent -- that's the
+        // sole case allowed to return null. Any other failure (network, auth, quota, etc) is
+        // rethrown so the caller never mistakes "the read failed" for "the remote is empty",
+        // which would otherwise silently clobber `wakehook.json` on the next write.
         val meta = try {
             drive.files().get(id).setFields("id, modifiedTime, version").execute()
-        } catch (e: Exception) {
-            return@withContext null
+        } catch (e: GoogleJsonResponseException) {
+            if (e.statusCode == 404) {
+                jsonFileId = null
+                return@withContext null
+            }
+            throw e
         }
 
         val content = drive.files().get(id).executeMediaAsInputStream()
@@ -88,12 +97,37 @@ class GoogleDriveProvider(
         RemoteFile(content, etagOf(meta))
     }
 
-    override suspend fun writeJson(content: String): String = withContext(Dispatchers.IO) {
+    override suspend fun writeJson(content: String, expectedEtag: String?): String = withContext(Dispatchers.IO) {
         val id = jsonFileId ?: run {
             val folder = folderId ?: findOrCreateFolder().also { folderId = it }
             findFileInFolder(folder, JSON_FILE_NAME) ?: createFile(folder, JSON_FILE_NAME, JSON_MIME_TYPE, content)
         }
         jsonFileId = id
+
+        if (expectedEtag != null) {
+            // Best-effort compare-and-swap: re-fetch the file's current etag immediately before
+            // writing, and bail out if it no longer matches what the caller last read.
+            //
+            // CAVEAT: this is NOT truly atomic. The google-api-services-drive client used here
+            // doesn't expose a way to thread Drive v3's conditional-write / If-Match precondition
+            // through `files.update`, so there's a small window between this check and the
+            // `drive.files().update(...)` call below where a conflicting external write could
+            // still land undetected. TODO(drive-sync): revisit if/when a real conditional-write
+            // header can be plumbed through the Drive HTTP request builder (e.g. via
+            // `AbstractGoogleClientRequest.getRequestHeaders()`), or the API exposes one
+            // natively. The engine-level CAS behavior itself is fully covered by
+            // [FakeSyncProvider]'s tested path; only this real-Drive best-effort window is
+            // unverified by automated tests (see class doc).
+            val currentMeta = try {
+                drive.files().get(id).setFields("id, modifiedTime, version").execute()
+            } catch (e: GoogleJsonResponseException) {
+                if (e.statusCode == 404) null else throw e
+            }
+            val currentEtag = currentMeta?.let { etagOf(it) }
+            if (currentEtag != null && currentEtag != expectedEtag) {
+                throw ConflictException()
+            }
+        }
 
         val body = ByteArrayContent(JSON_MIME_TYPE, content.toByteArray(Charsets.UTF_8))
         val updated = drive.files().update(id, null, body).setFields("id, modifiedTime, version").execute()

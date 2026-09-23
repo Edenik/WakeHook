@@ -10,18 +10,36 @@ import android.content.Context
 interface TombstoneStore {
     suspend fun local(): Set<String>
     suspend fun add(id: String)
+
+    /** Stops tracking [id] as tombstoned -- called once its deletion has propagated to remote. */
+    suspend fun remove(id: String)
 }
 
-/** [TombstoneStore] backed by a `StringSet` in [Context.getSharedPreferences]. */
+/**
+ * [TombstoneStore] backed by a `StringSet` in [Context.getSharedPreferences].
+ *
+ * [add]/[remove] synchronize on [lock] so a read-modify-write pair (read the current set, then
+ * write current+/-id) can't race with another call and silently lose an update.
+ */
 class PrefsTombstoneStore(private val context: Context) : TombstoneStore {
     private val prefs get() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val lock = Any()
 
     override suspend fun local(): Set<String> =
         prefs.getStringSet(KEY_TOMBSTONES, emptySet()) ?: emptySet()
 
     override suspend fun add(id: String) {
-        val current = local()
-        prefs.edit().putStringSet(KEY_TOMBSTONES, current + id).apply()
+        synchronized(lock) {
+            val current = prefs.getStringSet(KEY_TOMBSTONES, emptySet()) ?: emptySet()
+            prefs.edit().putStringSet(KEY_TOMBSTONES, current + id).apply()
+        }
+    }
+
+    override suspend fun remove(id: String) {
+        synchronized(lock) {
+            val current = prefs.getStringSet(KEY_TOMBSTONES, emptySet()) ?: emptySet()
+            prefs.edit().putStringSet(KEY_TOMBSTONES, current - id).apply()
+        }
     }
 
     companion object {
