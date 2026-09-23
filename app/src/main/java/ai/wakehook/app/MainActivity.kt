@@ -3,6 +3,7 @@ package ai.wakehook.app
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.SharedPreferences
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -14,6 +15,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import ai.wakehook.app.ui.settings.PermissionStatus
 import ai.wakehook.app.ui.AgentPrompt
 import ai.wakehook.app.ui.AppContainer
 import ai.wakehook.app.ui.edit.AlarmEditScreen
@@ -42,10 +47,11 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var container: AppContainer
+    private var permissionStatus by mutableStateOf<PermissionStatus?>(null)
 
     private val requestNotif = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* status re-read on resume */ }
+    ) { permissionStatus = PermissionState.read(this) }
 
     /** Requests only `drive.file` — the app can see files it creates, nothing else in the user's Drive. */
     private val googleSignInClient: GoogleSignInClient by lazy {
@@ -97,22 +103,34 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = 0xFF0E0F14.toInt()
+        window.navigationBarColor = 0xFF0E0F14.toInt()
         container = (application as WakeHookApp).container
         seedLocalExamplesOnce()
-        if (Build.VERSION.SDK_INT >= 33) requestNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
+        permissionStatus = PermissionState.read(this)
 
         setContent {
             WakeHookTheme {
                 val nav = rememberNavController()
+                val syncPrefs = remember { getSharedPreferences(SyncState.PREFS_NAME, MODE_PRIVATE) }
+                var driveConnected by remember { mutableStateOf(SyncState(this@MainActivity).connected()) }
+                var lastSync by remember { mutableLongStateOf(SyncState(this@MainActivity).lastSync()) }
+                DisposableEffect(syncPrefs) {
+                    val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                        driveConnected = SyncState(this@MainActivity).connected()
+                        lastSync = SyncState(this@MainActivity).lastSync()
+                    }
+                    syncPrefs.registerOnSharedPreferenceChangeListener(listener)
+                    onDispose { syncPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+                }
                 val start = if (OnboardingState(this@MainActivity).isDone()) "list" else "onboarding"
                 NavHost(nav, startDestination = start) {
                     composable("onboarding") {
-                        val syncState = SyncState(this@MainActivity)
                         OnboardingFlow(
-                            status = PermissionState.read(this@MainActivity),
-                            driveConnected = syncState.connected(),
+                            status = permissionStatus ?: PermissionState.read(this@MainActivity),
+                            driveConnected = driveConnected,
                             onFixExactAlarm = { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) },
-                            onFixNotifications = { startActivity(appSettings()) },
+                            onFixNotifications = { requestNotificationPermission() },
                             onFixBattery = {
                                 startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                                     Uri.parse("package:$packageName")))
@@ -134,24 +152,26 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("list") {
-                        val vm = AlarmListViewModel(container.repository, container.scheduler, container.tombstones) {
-                            SyncTrigger.now(container.appContext)
-                        }
+                        val vm: AlarmListViewModel = viewModel(factory = viewModelFactory {
+                            initializer { AlarmListViewModel(container.repository, container.scheduler, container.tombstones) {
+                                SyncTrigger.now(container.appContext)
+                            } }
+                        })
                         AlarmListScreen(vm,
                             onAdd = { nav.navigate("edit") },
                             onEdit = { id -> nav.navigate("edit?id=$id") },
-                            onSettings = { nav.navigate("settings") })
+                            onSettings = { nav.navigate("settings") },
+                            exactAlarmAllowed = permissionStatus?.exactAlarm ?: false)
                     }
                     composable("edit") { EditRoute(nav, null) }
                     composable("edit?id={id}") { back ->
                         EditRoute(nav, back.arguments?.getString("id"))
                     }
                     composable("settings") {
-                        val syncState = SyncState(this@MainActivity)
                         SettingsScreen(
-                            status = PermissionState.read(this@MainActivity),
+                            status = permissionStatus ?: PermissionState.read(this@MainActivity),
                             onFixExactAlarm = { startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)) },
-                            onFixNotifications = { startActivity(appSettings()) },
+                            onFixNotifications = { requestNotificationPermission() },
                             onFixBattery = {
                                 startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                                     Uri.parse("package:$packageName")))
@@ -164,11 +184,12 @@ class MainActivity : ComponentActivity() {
                                     else appSettings()
                                 )
                             },
-                            driveConnected = syncState.connected(),
-                            lastSyncMillis = syncState.lastSync(),
+                            driveConnected = driveConnected,
+                            lastSyncMillis = lastSync,
                             onConnectDrive = { signInLauncher.launch(googleSignInClient.signInIntent) },
                             onSyncNow = { SyncTrigger.now(container.appContext) },
-                            onCopyPrompt = { copyAgentPrompt() })
+                            onCopyPrompt = { copyAgentPrompt() },
+                            onBack = { nav.popBackStack() })
                     }
                 }
             }
@@ -177,15 +198,24 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun EditRoute(nav: androidx.navigation.NavController, id: String?) {
-        val vm = AlarmEditViewModel(container.repository, container.scheduler) {
-            SyncTrigger.now(container.appContext)
-        }
+        val vm: AlarmEditViewModel = viewModel(factory = viewModelFactory {
+            initializer { AlarmEditViewModel(container.repository, container.scheduler) {
+                SyncTrigger.now(container.appContext)
+            } }
+        })
         AlarmEditScreen(vm, id) { nav.popBackStack() }
     }
 
     override fun onResume() {
         super.onResume()
+        permissionStatus = PermissionState.read(this)
         SyncTrigger.now(container.appContext)
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33 && !PermissionState.read(this).notifications)
+            requestNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
+        else startActivity(appSettings())
     }
 
     private fun appSettings() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

@@ -70,4 +70,43 @@
     <string name="channel_agent_activity">Agent activity</string>
     <string name="agent_set_alarm">%1$s set an alarm</string>
     <string name="agent_changed_alarm">%1$s changed an alarm</string>
+
+    <!-- Native design -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="alarms">Alarms</string>
+    <string name="next_alarm">NEXT ALARM</string>
+    <string name="your_alarms">YOUR ALARMS</string>
+    <string name="no_active_alarms">A quieter morning.</string>
+    <string name="enable_alarm_hint">Enable an alarm or add a new one.</string>
+    <string name="fresh_start">A fresh start.</string>
+    <string name="set_by_you">Set by you</string>
+    <string name="set_by_agent">Set by %1$s</string>
+    <string name="example_alarm">Example alarm</string>
+    <string name="alarm_disabled">Disabled</string>
+    <string name="schedule_error">Could not schedule · Check permissions</string>
+    <string name="local_alarm_hint">Alarms already scheduled on this phone can ring offline.</string>
+    <string name="permission_attention">Permission needed to schedule alarms</string>
+    <string name="check_permissions">Check permissions</string>
+    <string name="time_format_hint">24-hour time · Device local time</string>
+    <string name="choose_schedule">Choose at least one day or date for this schedule.</string>
+    <string name="save_alarm_hint">Saved on your phone. Changes sync when connected.</string>
+    <string name="agent_connection">AGENT CONNECTION</string>
+    <string name="alarm_readiness">ALARM READINESS</string>
+    <string name="exact_hint">Ring at the time you choose</string>
+    <string name="notification_hint">See alarm notifications</string>
+    <string name="fullscreen_hint">Show over your lock screen</string>
+    <string name="battery_hint">Allow background work</string>
+    <string name="waiting_first_sync">Waiting for the first sync</string>
+    <string name="sync_requested">Sync requested · Tap to retry</string>
+    <string name="remote_timing_hint">Set remote alarms at least 20 minutes ahead. Background sync can be delayed; confirm the alarm on your phone.</string>
+    <string name="local_connection_hint">Your local alarms work without Drive. Connect to let an authorized agent help manage them.</string>
+    <string name="agent_handoff_title">Meet your alarm assistant</string>
+    <string name="agent_handoff_steps">1. Copy the instructions.\n\n2. Paste into an agent with Drive editing access.\n\n3. Ask for an alarm and confirm it on your phone.</string>
+    <string name="welcome_headline">You dream.\nWe’ll do the waking up.</string>
+    <string name="optional_connection">AN OPTIONAL CONNECTION</string>
+    <string name="connect_headline">Your agent.\nYour Drive.\nYour alarms.</string>
+    <string name="drive_scope_hint">WakeHook creates its own folder and alarm files. It can access files it creates or that you explicitly open with it, not your whole Drive. No WakeHook server.</string>
+    <string name="try_asking">TRY ASKING YOUR AGENT</string>
+    <string name="example_request">Wake me tomorrow at 6:45.</string>
 </resources>

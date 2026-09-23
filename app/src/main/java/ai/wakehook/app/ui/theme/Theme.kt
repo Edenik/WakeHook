@@ -1,5 +1,8 @@
 package ai.wakehook.app.ui.theme
 
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -24,16 +27,24 @@ private val WakeHookDark = darkColorScheme(
     onPrimaryContainer = Amber,
     secondary = Indigo,
     onSecondary = IndigoInk,
+    secondaryContainer = Color(0xFF393022),
+    onSecondaryContainer = Amber,
+    outline = Color(0xFF454853),
     background = Ground,
     onBackground = TextHi,
     surface = Surface1,
     onSurface = TextHi,
     surfaceVariant = SurfaceVar,
     onSurfaceVariant = TextDim,
+    outlineVariant = Color(0xFF2B2E38),
+    tertiary = Color(0xFFA5D6B2),
 )
 
 @Composable
 fun WakeHookTheme(content: @Composable () -> Unit) {
     // v1 is dark-theme first, branded amber.
-    MaterialTheme(colorScheme = WakeHookDark, content = content)
+    MaterialTheme(colorScheme = WakeHookDark, shapes = Shapes(
+        extraSmall = RoundedCornerShape(12.dp), small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(16.dp),
+        large = RoundedCornerShape(22.dp), extraLarge = RoundedCornerShape(28.dp)
+    ), content = content)
 }

@@ -70,4 +70,43 @@
     <string name="channel_agent_activity">פעילות סוכן</string>
     <string name="agent_set_alarm">%1$s הגדיר התראה</string>
     <string name="agent_changed_alarm">%1$s שינה התראה</string>
+
+    <!-- Native design -->
+    <string name="back">חזרה</string>
+    <string name="cancel">ביטול</string>
+    <string name="alarms">התראות</string>
+    <string name="next_alarm">ההתראה הבאה</string>
+    <string name="your_alarms">ההתראות שלך</string>
+    <string name="no_active_alarms">בוקר רגוע יותר.</string>
+    <string name="enable_alarm_hint">הפעילו התראה או הוסיפו התראה חדשה.</string>
+    <string name="fresh_start">התחלה חדשה.</string>
+    <string name="set_by_you">נוצרה על ידך</string>
+    <string name="set_by_agent">נוצרה על ידי %1$s</string>
+    <string name="example_alarm">התראה לדוגמה</string>
+    <string name="alarm_disabled">כבויה</string>
+    <string name="schedule_error">לא ניתן לתזמן · בדקו הרשאות</string>
+    <string name="local_alarm_hint">התראות שכבר תוזמנו במכשיר יכולות לצלצל גם ללא אינטרנט.</string>
+    <string name="permission_attention">נדרשת הרשאה לתזמון התראות</string>
+    <string name="check_permissions">בדיקת הרשאות</string>
+    <string name="time_format_hint">תצוגת 24 שעות · השעה המקומית במכשיר</string>
+    <string name="choose_schedule">בחרו לפחות יום אחד או תאריך אחד לתזמון.</string>
+    <string name="save_alarm_hint">נשמר במכשיר. השינויים יסונכרנו כשיש חיבור.</string>
+    <string name="agent_connection">חיבור לסוכן</string>
+    <string name="alarm_readiness">מוכנות להתראות</string>
+    <string name="exact_hint">צלצול בזמן שבחרתם</string>
+    <string name="notification_hint">הצגת הודעות על התראות</string>
+    <string name="fullscreen_hint">הצגה מעל מסך הנעילה</string>
+    <string name="battery_hint">אפשרות לפעול ברקע</string>
+    <string name="waiting_first_sync">ממתינים לסנכרון הראשון</string>
+    <string name="sync_requested">הסנכרון התבקש · הקישו לניסיון חוזר</string>
+    <string name="remote_timing_hint">הגדירו התראות מרחוק לפחות 20 דקות מראש. הסנכרון ברקע עשוי להתעכב; ודאו שההתראה מופיעה במכשיר.</string>
+    <string name="local_connection_hint">ההתראות המקומיות פועלות ללא Drive. התחברו כדי לאפשר לסוכן מורשה לנהל אותן.</string>
+    <string name="agent_handoff_title">הכירו את עוזר ההתראות שלכם</string>
+    <string name="agent_handoff_steps">1. העתיקו את ההוראות.\n\n2. הדביקו אותן לסוכן עם הרשאת עריכה ב-Drive.\n\n3. בקשו התראה וודאו שהיא מופיעה במכשיר.</string>
+    <string name="welcome_headline">אתם תחלמו.\nאנחנו נדאג להשכמה.</string>
+    <string name="optional_connection">חיבור לבחירתכם</string>
+    <string name="connect_headline">הסוכן שלכם.\nה-Drive שלכם.\nההתראות שלכם.</string>
+    <string name="drive_scope_hint">WakeHook יוצרת תיקייה וקובצי התראות משלה. היא יכולה לגשת לקבצים שיצרה או שפתחתם באמצעותה במפורש, ולא לכל ה-Drive. אין שרת של WakeHook.</string>
+    <string name="try_asking">נסו לבקש מהסוכן</string>
+    <string name="example_request">תעיר אותי מחר ב-6:45.</string>
 </resources>

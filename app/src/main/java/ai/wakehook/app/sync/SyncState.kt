@@ -19,7 +19,7 @@ class SyncState(private val context: Context) {
     }
 
     companion object {
-        private const val PREFS_NAME = "wakehook_sync"
+        internal const val PREFS_NAME = "wakehook_sync"
         private const val KEY_LAST_SYNC = "last_sync"
         private const val KEY_CONNECTED = "connected"
     }
