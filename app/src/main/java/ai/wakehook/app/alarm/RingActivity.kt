@@ -2,7 +2,6 @@ package ai.wakehook.app.alarm
 
 import android.app.KeyguardManager
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -14,28 +13,14 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import ai.wakehook.app.ui.theme.AlarmEmblem
-import ai.wakehook.app.ui.theme.ClockTime
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import ai.wakehook.app.data.AlarmDatabase
 import ai.wakehook.app.data.RoomAlarmRepository
 import ai.wakehook.app.sync.SyncTrigger
+import ai.wakehook.app.ui.edit.AlarmPlaybackSettings
+import ai.wakehook.app.ui.edit.AlarmPlaybackSettingsStore
 import ai.wakehook.app.ui.theme.WakeHookTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +39,8 @@ class RingActivity : ComponentActivity() {
     private var currentId by mutableStateOf("")
     private var currentLabel by mutableStateOf("")
     private var currentTime by mutableStateOf("")
+    private var playback by mutableStateOf(AlarmPlaybackSettings())
+    private var snoozesUsed by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,13 +60,22 @@ class RingActivity : ComponentActivity() {
                 RingScreen(
                     time = currentTime,
                     label = currentLabel,
+                    playback = playback,
+                    snoozesUsed = snoozesUsed,
                     onDismiss = { stopAll(currentId); finish() },
                     onSnooze = {
                         val id = currentId
-                        val snoozedUntil = System.currentTimeMillis() + 10 * 60 * 1000L
-                        AlarmScheduler(this).scheduleSnooze(id, currentLabel, snoozedUntil)
-                        persistSnooze(id, snoozedUntil)
-                        stopAll(currentId); finish()
+                        try {
+                            val used = snoozesUsed + 1
+                            val snoozedUntil = System.currentTimeMillis() + playback.snoozeMinutes * 60 * 1000L
+                            AlarmScheduler(this).scheduleSnooze(id, currentLabel, snoozedUntil)
+                            AlarmPlaybackSettingsStore(this).setSnoozesUsed(id, used)
+                            snoozesUsed = used
+                            persistSnooze(id, snoozedUntil)
+                            stopAll(currentId); finish()
+                        } catch (_: SecurityException) {
+                            android.widget.Toast.makeText(this, getString(ai.wakehook.app.R.string.save_schedule_failed), android.widget.Toast.LENGTH_LONG).show()
+                        }
                     },
                 )
             }
@@ -130,6 +126,10 @@ class RingActivity : ComponentActivity() {
         currentId = intent.getStringExtra(AlarmIntents.EXTRA_ID) ?: ""
         currentLabel = intent.getStringExtra(AlarmIntents.EXTRA_LABEL) ?: ""
         currentTime = SimpleDateFormat("HH:mm", Locale.US).format(Date())
+        val settings = AlarmPlaybackSettingsStore(this)
+        if (!intent.getBooleanExtra(AlarmIntents.EXTRA_SNOOZE, false)) settings.clearSnoozesUsed(currentId)
+        playback = settings.load(currentId)
+        snoozesUsed = settings.snoozesUsed(currentId)
     }
 
     /** Guarded against double-acquire so a takeover never leaks/re-acquires a held wakelock. */
@@ -143,20 +143,30 @@ class RingActivity : ComponentActivity() {
 
     private fun startRinging() {
         try {
-            player = MediaPlayer().apply {
-                setDataSource(this@RingActivity,
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
-                setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM).build())
-                isLooping = true
-                prepare()
-                start()
+            val soundUri = when {
+                !playback.soundEnabled || playback.soundUri == AlarmPlaybackSettings.SILENT_SOUND -> null
+                playback.soundUri == AlarmPlaybackSettings.SYSTEM_DEFAULT_SOUND || playback.soundUri == null ->
+                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                else -> android.net.Uri.parse(playback.soundUri)
+            }
+            if (soundUri != null) {
+                player = MediaPlayer().apply {
+                    setDataSource(this@RingActivity, soundUri)
+                    setAudioAttributes(AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM).build())
+                    isLooping = true
+                    prepare()
+                    start()
+                }
             }
         } catch (_: Exception) {}
-        vibrator = (getSystemService(VIBRATOR_SERVICE) as? Vibrator)?.also {
-            if (Build.VERSION.SDK_INT >= 26)
-                it.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 600, 400), 0))
-            else @Suppress("DEPRECATION") it.vibrate(longArrayOf(0, 600, 400), 0)
+        if (playback.vibrationEnabled) vibrator = (getSystemService(VIBRATOR_SERVICE) as? Vibrator)?.also {
+            val pattern = when (playback.vibrationPattern) {
+                AlarmPlaybackSettings.GENTLE -> longArrayOf(0, 180, 500)
+                AlarmPlaybackSettings.STRONG -> longArrayOf(0, 800, 250)
+                else -> longArrayOf(0, 600, 400)
+            }
+            it.vibrate(VibrationEffect.createWaveform(pattern, 0))
         }
     }
 
@@ -178,23 +188,4 @@ class RingActivity : ComponentActivity() {
 
     override fun onDestroy() { stopAll(currentId); super.onDestroy() }
     @Deprecated("force explicit choice") override fun onBackPressed() { /* ignore */ }
-}
-
-@Composable
-private fun RingScreen(time: String, label: String, onDismiss: () -> Unit, onSnooze: () -> Unit) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0xFF3A2C27), Color(0xFF0E0F14)), radius = 1100f))) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                Spacer(Modifier.height(24.dp))
-                Text(stringResource(ai.wakehook.app.R.string.app_name), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-                AlarmEmblem()
-                ClockTime(time, large = true)
-                if (label.isNotBlank()) Text(label, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(24.dp))
-                Button(shape = RoundedCornerShape(14.dp), onClick = onDismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) { Text(stringResource(ai.wakehook.app.R.string.dismiss)) }
-                OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = onSnooze, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text(stringResource(ai.wakehook.app.R.string.snooze_10)) }
-            }
-        }
-    }
 }
