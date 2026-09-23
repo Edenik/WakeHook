@@ -1,1 +1,22 @@
+# Local docs (kept on disk, not tracked)
 docs/
+
+# Android build
+.gradle/
+build/
+app/build/
+local.properties
+
+# Signing secrets — never commit
+*.keystore
+*.jks
+keystore/
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# SDD scratch
+.superpowers/
