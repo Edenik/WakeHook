@@ -26,6 +26,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     testOptions { unitTests { isIncludeAndroidResources = true } }
+    packaging { resources { excludes += "META-INF/*" } }
 
     val keystorePropsFile = rootProject.file("keystore.properties")
     val hasKeystore = keystorePropsFile.exists()
@@ -67,6 +68,15 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.api-client:google-api-client-android:2.2.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.apis:google-api-services-drive:v3-rev20230815-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.http-client:google-http-client-gson:1.43.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.11.1")
