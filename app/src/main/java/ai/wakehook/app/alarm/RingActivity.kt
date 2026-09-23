@@ -15,6 +15,16 @@ import android.os.Vibrator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import ai.wakehook.app.ui.theme.AlarmEmblem
+import ai.wakehook.app.ui.theme.ClockTime
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +57,8 @@ class RingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = 0xFF0E0F14.toInt()
+        window.navigationBarColor = 0xFF0E0F14.toInt()
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)
@@ -170,18 +182,19 @@ class RingActivity : ComponentActivity() {
 
 @Composable
 private fun RingScreen(time: String, label: String, onDismiss: () -> Unit, onSnooze: () -> Unit) {
-    Surface(Modifier.fillMaxSize()) {
-        Column(
-            Modifier.fillMaxSize().padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(time, style = MaterialTheme.typography.displayLarge)
-            if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.height(48.dp))
-            Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(androidx.compose.ui.res.stringResource(ai.wakehook.app.R.string.dismiss)) }
-            Spacer(Modifier.height(16.dp))
-            OutlinedButton(onClick = onSnooze, modifier = Modifier.fillMaxWidth()) { Text(androidx.compose.ui.res.stringResource(ai.wakehook.app.R.string.snooze_10)) }
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Color(0xFF3A2C27), Color(0xFF0E0F14)), radius = 1100f))) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                Spacer(Modifier.height(24.dp))
+                Text(stringResource(ai.wakehook.app.R.string.app_name), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
+                AlarmEmblem()
+                ClockTime(time, large = true)
+                if (label.isNotBlank()) Text(label, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(24.dp))
+                Button(shape = RoundedCornerShape(14.dp), onClick = onDismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) { Text(stringResource(ai.wakehook.app.R.string.dismiss)) }
+                OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = onSnooze, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text(stringResource(ai.wakehook.app.R.string.snooze_10)) }
+            }
         }
     }
 }

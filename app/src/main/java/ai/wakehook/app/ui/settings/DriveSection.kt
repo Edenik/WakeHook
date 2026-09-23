@@ -1,56 +1,49 @@
 package ai.wakehook.app.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ai.wakehook.app.R
-import java.text.SimpleDateFormat
+import ai.wakehook.app.ui.theme.*
+import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
-/**
- * Google Drive connection status + sync actions, shown above the permission rows in
- * [SettingsScreen]. Purely presentational — callers own connect/sync/copy behavior.
- */
 @Composable
-fun DriveSection(
-    connected: Boolean,
-    lastSyncMillis: Long,
-    onConnect: () -> Unit,
-    onSyncNow: () -> Unit,
-    onCopyPrompt: () -> Unit,
-) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.google_drive)) },
-            supportingContent = {
-                Text(
-                    if (connected) stringResource(R.string.connected_last_sync, formatLastSync(lastSyncMillis))
-                    else stringResource(R.string.not_connected)
-                )
-            },
-            trailingContent = {
-                if (!connected) Button(onClick = onConnect) { Text(stringResource(R.string.connect)) }
+fun DriveSection(connected: Boolean, lastSyncMillis: Long, onConnect: () -> Unit, onSyncNow: () -> Unit, onCopyPrompt: () -> Unit) {
+    var showInstructions by remember { mutableStateOf(false) }
+    var requestedAt by remember { mutableStateOf(0L) }
+    val pending = requestedAt > lastSyncMillis
+    DesignCard {
+        Text(stringResource(R.string.google_drive), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(if (connected) R.string.onb_connected else R.string.not_connected),
+            color = if (connected) ReadyGreen else MaterialTheme.colorScheme.onSurfaceVariant)
+        if (connected) {
+            Text(if (lastSyncMillis > 0) stringResource(R.string.connected_last_sync, DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(lastSyncMillis)))
+                else stringResource(R.string.waiting_first_sync), style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = { requestedAt = System.currentTimeMillis(); onSyncNow() }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(if (pending) R.string.sync_requested else R.string.sync_now))
             }
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.sync_now)) },
-            trailingContent = { Button(onClick = onSyncNow) { Text(stringResource(R.string.sync)) } }
-        )
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.copy_agent_prompt)) },
-            supportingContent = { Text(stringResource(R.string.copy_agent_prompt_desc)) },
-            trailingContent = { Button(onClick = onCopyPrompt) { Text(stringResource(R.string.copy)) } }
-        )
-        Divider()
+            Text(stringResource(R.string.remote_timing_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            Text(stringResource(R.string.local_connection_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(shape = RoundedCornerShape(14.dp), onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.onb_sign_in)) }
+        }
     }
-}
-
-private fun formatLastSync(millis: Long): String {
-    if (millis <= 0L) return "never"
-    val fmt = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-    return fmt.format(Date(millis))
+    if (connected) {
+        OutlinedButton(shape = RoundedCornerShape(14.dp), onClick = { showInstructions = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            Text(stringResource(R.string.copy_agent_prompt))
+        }
+    }
+    if (showInstructions) AlertDialog(onDismissRequest = { showInstructions = false },
+        title = { Text(stringResource(R.string.agent_handoff_title)) },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(stringResource(R.string.agent_handoff_steps))
+            Text(stringResource(R.string.remote_timing_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } },
+        confirmButton = { TextButton(shape = RoundedCornerShape(14.dp), onClick = { onCopyPrompt(); showInstructions = false }) { Text(stringResource(R.string.copy)) } },
+        dismissButton = { TextButton(shape = RoundedCornerShape(14.dp), onClick = { showInstructions = false }) { Text(stringResource(R.string.cancel)) } })
 }
